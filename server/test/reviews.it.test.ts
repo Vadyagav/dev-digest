@@ -213,12 +213,46 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.grounding).toBe('1/2 passed');
     expect(run!.costUsd).toBeGreaterThan(0);
 
-    // and the same cost surfaces on the PR list's COST column
+    // and the same cost surfaces on the PR list's COST column (one run so far)
     const prList = (
       await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
     ).json();
     const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
     expect(listedPr.cost_usd).toBe(run!.costUsd);
+
+    await app.close();
+  });
+
+  it("PR list's COST column is the SUM of every successful run, not just the latest", async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Sec', provider: 'openai', model: 'gpt-4.1', system_prompt: 'sec' },
+      })
+    ).json();
+
+    // Run the review twice — a re-review after a push, say — so two 'done'
+    // agent_runs rows exist for the same PR.
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    const runs = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.prId, pr.id));
+    expect(runs).toHaveLength(2);
+    const expectedTotal = runs.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
+    expect(expectedTotal).toBeGreaterThan(0);
+
+    const prList = (
+      await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
+    ).json();
+    const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
+    // The sum of both runs, not either run's individual cost alone.
+    expect(listedPr.cost_usd).toBeCloseTo(expectedTotal, 10);
+    expect(listedPr.cost_usd).not.toBeCloseTo(runs[0]!.costUsd!, 10);
 
     await app.close();
   });

@@ -5,10 +5,12 @@ Repo-wide conventions: [../CLAUDE.md](../CLAUDE.md).
 ## Use when
 
 - Pipeline diagram, commands → read [reviewer-core/README.md](README.md)
-- Deep-dives → read `reviewer-core/docs/` · behavior specs → read
-  `reviewer-core/specs/` · findings → read [reviewer-core/INSIGHTS.md](INSIGHTS.md)
-  before starting, update it via `engineering-insights` before ending
-  non-trivial work
+- Pipeline architecture (prompt assembly, mode selection, structured-output
+  loop, reduce) → read [reviewer-core/docs/pipeline.md](docs/pipeline.md) ·
+  the exact grounding/scoring contract → read
+  [reviewer-core/specs/grounding-and-scoring.md](specs/grounding-and-scoring.md) ·
+  findings → read [reviewer-core/INSIGHTS.md](INSIGHTS.md) before starting,
+  update it via `engineering-insights` before ending non-trivial work
 
 ## Stack & run
 
@@ -16,6 +18,7 @@ Repo-wide conventions: [../CLAUDE.md](../CLAUDE.md).
 - `pnpm typecheck` (also `build` — there's no emitted JS; both just run
   `tsc --noEmit`)
 - `pnpm test` (vitest, hermetic, stubbed `LLMProvider`)
+- `pnpm lint` (ESLint flat config, `eslint.config.js`)
 
 ## Where things are
 
@@ -46,8 +49,21 @@ Repo-wide conventions: [../CLAUDE.md](../CLAUDE.md).
 - `INJECTION_GUARD` is deliberately not a keyword/denylist scan — untrusted
   content handling is meant to stay model-side, via `wrapUntrusted`.
 
+## Naming conventions
+
+- Files: `kebab-case.ts` (`to-review.ts`), one file per concern, grouped
+  under a lowercase folder by area (`llm/`, `output/`, `review/`).
+- Functions: `camelCase`, verb-first (`groundFindings`, `assemblePrompt`,
+  `extractJson`); classes/interfaces: `PascalCase` (`OpenRouterProvider`,
+  `LLMProvider`).
+- True constants: `SCREAMING_SNAKE_CASE` (`DEFAULT_MAP_THRESHOLD_LINES`,
+  `SEV_RANK`, `FAIL_ON_MIN_RANK`) — not for ordinary `const` bindings, only
+  values that are conceptually configuration/lookup tables.
+
 ## Do not touch
 
 - Nothing package-specific beyond the repo-wide list in
   [../CLAUDE.md](../CLAUDE.md) — this package owns no vendored or generated
   files.
+- `package-lock.json` — this package uses npm, not pnpm (see repo-root
+  `./scripts/dev.sh` note); never hand-edit, rerun `npm ci` to regenerate.

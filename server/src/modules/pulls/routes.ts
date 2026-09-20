@@ -129,19 +129,21 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest completed run's COST per PR for the list's COST column. Same
-    // read-time derivation as the score above: newest-first agent_runs rows,
-    // first seen per PR wins. Only status='done' runs count — a failed run
-    // has no meaningful spend to surface.
-    const latestRunCostByPr = new Map<string, number | null>();
+    // Total COST per PR for the list's COST column: the SUM of every
+    // successful (status='done') run's cost, not just the latest one — a PR
+    // re-reviewed 3 times has spent all 3 runs' worth. A run with an unknown
+    // cost (null) doesn't count toward the sum but doesn't zero it either;
+    // a PR with no done runs (or only unknown-cost ones) has no entry here
+    // and renders "—", never "$0.00".
+    const totalRunCostByPr = new Map<string, number>();
     if (prIds.length > 0) {
       const runRows = await container.db
         .select({ prId: t.agentRuns.prId, costUsd: t.agentRuns.costUsd })
         .from(t.agentRuns)
-        .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRuns.status, 'done')))
-        .orderBy(desc(t.agentRuns.ranAt));
+        .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRuns.status, 'done')));
       for (const run of runRows) {
-        if (run.prId && !latestRunCostByPr.has(run.prId)) latestRunCostByPr.set(run.prId, run.costUsd);
+        if (!run.prId || run.costUsd == null) continue;
+        totalRunCostByPr.set(run.prId, (totalRunCostByPr.get(run.prId) ?? 0) + run.costUsd);
       }
     }
 
@@ -169,7 +171,7 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
-        cost_usd: latestRunCostByPr.get(r.id) ?? null,
+        cost_usd: totalRunCostByPr.get(r.id) ?? null,
       };
     });
   });

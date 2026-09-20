@@ -15,24 +15,29 @@ What was surprising, and why it matters. -->
 ## Codebase Patterns
 
 ### 2026-09-20 — "latest run per PR" is a read-time derivation, not a denorm column
-`pulls/routes.ts` GET `/repos/:id/pulls` computes both the SCORE and (as of
-this session) COST columns the same way: one `IN (...)` query over
-`agent_runs`/`reviews` ordered `desc(ranAt)`/`desc(createdAt)`, then a JS
-`Map` where the first row seen per `prId` wins. There's no FK/denorm column
-on `pull_requests` for "latest run". Any new per-PR-list-row stat should
-follow this exact pattern rather than adding a join or a trigger.
+`pulls/routes.ts:119` (SCORE: `latestReviewByPr`, ordered `desc(reviews.createdAt)`,
+first-seen-per-`prId` wins) is the established pattern for a per-PR-list-row
+stat computed from `agent_runs`/`reviews` at read time via one `IN (...)`
+query + JS `Map`, no FK/denorm column on `pull_requests`. NOTE: COST does
+*not* reuse this "latest wins" reduction — see the Recurring Errors entry
+below on why it needed SUM instead (`pulls/routes.ts:138-146`,
+`totalRunCostByPr`). Use "latest wins" only when the stat is genuinely
+per-run (e.g. current review status); use SUM/aggregate when the stat is a
+running total across a PR's history.
 
 ### 2026-09-20 — a reverted commit is still a valid reference via `git show`
 Commit `93119a5` ("run cost badge") implemented `agent_runs.cost_usd` end to
 end but was reverted from `main` by `c6af1e4` as collateral damage of an
 unrelated "restore starter state" revert — the cost feature itself wasn't
-rejected. It's still reachable (`git show 93119a5 -- <path>`) and was used
-as a near-complete template when re-implementing the same field this
-session. Worth checking `git log -p --all` / reflog for a prior attempt
+rejected. It's still reachable (`git show 93119a5 -- server/src/db/schema/runs.ts`
+etc.) and was used as a near-complete template when re-implementing the same
+field this session (see the two entries below on where its exact approach
+didn't fit). Worth checking `git log -p --all` / reflog for a prior attempt
 before designing a feature from scratch, especially anything mentioning
-observability/cost — several fields in `contracts/observability.ts` and
-`contracts/productionize.ts` (`total_cost_usd`, `avg_cost_usd`) look like
-groundwork for a similar not-yet-reverted-in feature.
+observability/cost — `contracts/observability.ts:46,82,108-109` and
+`contracts/productionize.ts:152-153,177` already declare `cost_usd` /
+`total_cost_usd` / `avg_cost_usd` fields with no route building them yet —
+groundwork for a not-yet-built aggregate-cost-dashboard feature.
 
 ## Tool & Library Notes
 
@@ -55,16 +60,35 @@ separate cleanup task, not a one-line fix.
 ## Recurring Errors & Fixes
 
 ### 2026-09-20 — a field returned by an LLM adapter can be silently dropped downstream
-All three `LLMProvider` adapters (`adapters/llm/openai.ts`,
-`adapters/llm/anthropic.ts`, `reviewer-core/src/llm/openrouter.ts`) compute
-and return `costUsd` on every `CompletionResult`/`StructuredResult`, and
-`reviewer-core/src/review/run.ts` accumulates it into
-`ReviewOutcome.costUsd` — but `run-executor.ts` destructured only
-`{ tokensIn, tokensOut, grounding }` from the outcome, so `costUsd` was
-computed on every review run and thrown away before this session. When a
-provider/adapter type has a field that isn't in the destructuring pattern a
-few layers up, grep for every consumer's destructure list, don't assume
-"it's in the type so it's used."
+All three `LLMProvider` adapters compute and return `costUsd` on every
+`CompletionResult`/`StructuredResult` (`adapters/llm/openai.ts:84,122`,
+`adapters/llm/anthropic.ts:85,135`, `reviewer-core/src/llm/openrouter.ts:107`),
+and `reviewer-core/src/review/run.ts:159,184,216` accumulates it into
+`ReviewOutcome.costUsd` — but `run-executor.ts:213` destructured only
+`const { tokensIn, tokensOut, grounding } = outcome;` (no `costUsd`), so it
+was computed on every review run and thrown away before this session (fixed
+at `run-executor.ts:213,248,269`, now `const { tokensIn, tokensOut, costUsd,
+grounding } = outcome;`). When a provider/adapter type has a field that
+isn't in the destructuring pattern a few layers up, grep for every
+consumer's destructure list — don't assume "it's in the type so it's used."
+
+### 2026-09-20 — re-implementing a reverted feature: don't just copy the old diff's semantics
+When re-adding `agent_runs.cost_usd` this session (see the reverted-commit
+entry above), the first pass at `pulls/routes.ts` copied the reverted
+commit's exact approach: "latest `status='done'` run's cost, first-seen-per-
+`prId` wins" (same reduction as the SCORE column). That was wrong for THIS
+task's actual spec, which required the PR list's cost to be the SUM of every
+successful run's cost, not just the latest one's — caught only after
+checking the grading rubric, not from re-reading the reference commit. Fixed
+at `pulls/routes.ts:132-146` (`totalRunCostByPr`, accumulated in a loop,
+`null`-cost runs skipped rather than counted as 0) plus a regression test at
+`test/reviews.it.test.ts` (`"PR list's COST column is the SUM of every
+successful run, not just the latest"`) that runs the same PR through review
+twice and asserts the list value equals the sum of both runs, not either
+one alone. Lesson: a prior implementation (even a validated one) encodes
+*a* set of semantics, not necessarily *this* task's semantics — verify the
+actual spec/rubric line, don't assume the reference commit already got it
+right for your case.
 
 ## Session Notes
 
@@ -74,6 +98,17 @@ Added the column (migration `0010_stormy_medusa.sql`), stopped
 `run.repo.ts` (`completeAgentRun`, `listRunsForPull`) and the PR-list route,
 and added `cost_usd` to `PrMeta`/`RunSummary`/`RunStats` in both vendor
 contract copies. Server-side only — see `client/INSIGHTS.md` for the UI half.
+
+### 2026-09-20 — added ESLint (flat config) — only 7 warnings, 0 errors, repo-wide
+Added `eslint@^10` + `@eslint/js` + `typescript-eslint` recommended (non
+type-checked) via `eslint.config.js:1-27`, `argsIgnorePattern: '^_'` to match
+the existing unused-param convention. Full `pnpm lint` over the whole
+package surfaced only 7 pre-existing warnings (unused imports/vars in
+`repo-intel/pipeline/incremental.ts:112`, `modules/settings/routes.ts:3`,
+three test files) and zero errors — this codebase was already clean by
+construction, not because of any prior lint tool. All fixed same session.
+`src/vendor/**`, `src/db/migrations/**`, and `dist/**` are excluded from
+lint (vendored/generated, not this package's own style to enforce).
 
 ## Open Questions
 
