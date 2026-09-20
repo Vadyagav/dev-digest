@@ -7,7 +7,7 @@ import { seed } from '../src/db/seed.js';
 import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
-import type { Review } from '@devdigest/shared';
+import type { Review, Finding } from '@devdigest/shared';
 
 const hasDocker = await dockerAvailable();
 const d = hasDocker ? describe : describe.skip;
@@ -59,6 +59,24 @@ const REVIEW_FIXTURE: Review = {
     },
   ],
 };
+
+/** `count` findings of one severity, all grounded on the diff's one real
+ *  changed line (11) so none get dropped by grounding. */
+function findingsFixture(count: number, severity: Finding['severity'], labelPrefix: string): Review {
+  const findings: Finding[] = Array.from({ length: count }, (_, i) => ({
+    id: `${labelPrefix}-${i}`,
+    severity,
+    category: 'bug',
+    title: `${labelPrefix} finding ${i}`,
+    file: 'src/config.ts',
+    start_line: 11,
+    end_line: 11,
+    rationale: `${labelPrefix} rationale ${i}.`,
+    confidence: 0.8,
+    kind: 'finding',
+  }));
+  return { verdict: 'comment', summary: `${labelPrefix} pass.`, score: 90, findings };
+}
 
 let repoSeq = 0;
 async function setupRepoAndPr(db: PgFixture['handle']['db'], workspaceId: string) {
@@ -219,42 +237,76 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     ).json();
     const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
     expect(listedPr.cost_usd).toBe(run!.costUsd);
+    // the FINDINGS column breakdown: only the surviving grounded CRITICAL
+    // finding counts — the dropped hallucinated WARNING never persisted.
+    expect(listedPr.findings_by_severity).toEqual({ CRITICAL: 1 });
 
     await app.close();
   });
 
-  it("PR list's COST column is the SUM of every successful run, not just the latest", async () => {
-    const app = await appWith(REVIEW_FIXTURE);
+  it("PR list's COST and FINDINGS columns sum each DISTINCT agent's latest run only", async () => {
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
-    const agent = (
-      await app.inject({
+
+    // Test Quality Reviewer runs once: 3 SUGGESTION findings.
+    const tqrApp = await appWith(findingsFixture(3, 'SUGGESTION', 'tqr'));
+    const tqr = (
+      await tqrApp.inject({
         method: 'POST',
         url: '/agents',
-        payload: { name: 'Sec', provider: 'openai', model: 'gpt-4.1', system_prompt: 'sec' },
+        payload: { name: 'Test Quality Reviewer', provider: 'openai', model: 'gpt-4.1', system_prompt: 'tqr' },
       })
     ).json();
-
-    // Run the review twice — a re-review after a push, say — so two 'done'
-    // agent_runs rows exist for the same PR.
-    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    await tqrApp.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: tqr.id } });
     await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
-    await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    await tqrApp.close();
+
+    // General Reviewer runs THREE TIMES in a row (re-reviews) — only its
+    // FINAL run's 4 WARNING findings should count, not 1 + 2 + 4.
+    const grApp1 = await appWith(findingsFixture(1, 'WARNING', 'gr1'));
+    const gr = (
+      await grApp1.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'General Reviewer', provider: 'openai', model: 'gpt-4.1', system_prompt: 'gr' },
+      })
+    ).json();
+    await grApp1.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: gr.id } });
     await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+    await grApp1.close();
+
+    const grApp2 = await appWith(findingsFixture(2, 'WARNING', 'gr2'));
+    await grApp2.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: gr.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 3 });
+    await grApp2.close();
+
+    const grApp3 = await appWith(findingsFixture(4, 'WARNING', 'gr3'));
+    await grApp3.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: gr.id } });
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 4 });
 
     const runs = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.prId, pr.id));
-    expect(runs).toHaveLength(2);
-    const expectedTotal = runs.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
-    expect(expectedTotal).toBeGreaterThan(0);
+    expect(runs).toHaveLength(4); // 1 (TQR) + 3 (GR)
+    const sumOfAllRunCosts = runs.reduce((sum, r) => sum + (r.costUsd ?? 0), 0);
+    const tqrRun = runs.find((r) => r.agentId === tqr.id)!;
+    const grLatestRun = runs
+      .filter((r) => r.agentId === gr.id)
+      .sort((a, b) => b.ranAt!.getTime() - a.ranAt!.getTime())[0]!;
+    const expectedCost = (tqrRun.costUsd ?? 0) + (grLatestRun.costUsd ?? 0);
+    // The three General Reviewer runs must each have cost, so summing ALL
+    // four runs would differ from summing just the two agents' latest runs.
+    expect(sumOfAllRunCosts).not.toBeCloseTo(expectedCost, 10);
 
     const prList = (
-      await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
+      await grApp3.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
     ).json();
     const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
-    // The sum of both runs, not either run's individual cost alone.
-    expect(listedPr.cost_usd).toBeCloseTo(expectedTotal, 10);
-    expect(listedPr.cost_usd).not.toBeCloseTo(runs[0]!.costUsd!, 10);
+    expect(listedPr.cost_usd).toBeCloseTo(expectedCost, 10);
+    expect(listedPr.cost_usd).not.toBeCloseTo(sumOfAllRunCosts, 10);
+    // 3 (TQR's only run) + 4 (GR's FINAL run only) = 7 total WARNING+SUGGESTION
+    // findings — NOT 3 + (1 + 2 + 4) = 10, which is what summing every GR
+    // run individually would give.
+    expect(listedPr.findings_by_severity).toEqual({ SUGGESTION: 3, WARNING: 4 });
 
-    await app.close();
+    await grApp3.close();
   });
 
   it('dual-provider structured output: anthropic provider returns the same Review shape', async () => {

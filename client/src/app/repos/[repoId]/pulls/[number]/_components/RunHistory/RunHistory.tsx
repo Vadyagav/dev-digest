@@ -4,7 +4,29 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
 import { RunCostBadge } from "@/components/run-cost-badge";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import { SeverityPills } from "@/components/severity-pills";
+import { FindingsPopover } from "@/components/findings-popover";
+import { countBySeverity } from "@/lib/findings";
+import type { RunSummary, PrCommit, FindingRecord } from "@devdigest/shared";
+
+/** Severity pills for one run's timeline row — hover reveals the same
+ *  read-only findings preview as the PR list's FINDINGS column. Findings are
+ *  already loaded by the caller (no fetch here, unlike the PR list's lazy
+ *  hover-fetch — the PR detail page has them in memory already). */
+function TimelineFindingsPills({ findings }: { findings: FindingRecord[] }) {
+  const [hovered, setHovered] = React.useState(false);
+  if (findings.length === 0) return null;
+  return (
+    <div
+      style={{ position: "relative", display: "inline-flex" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <SeverityPills counts={countBySeverity(findings)} compact />
+      {hovered && <FindingsPopover findings={findings} />}
+    </div>
+  );
+}
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -88,12 +110,18 @@ function tsOf(s: string | null | undefined): number {
 export function RunHistory({
   runs,
   commits = [],
+  findingsByRunId,
   onOpenTrace,
   onGoToReview,
   onDelete,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
+  /** Per-run findings (from the matching review), keyed by run_id — renders
+   *  as icon pills (hover for the full preview) in place of the plain
+   *  "N findings" text. A run with no entry here (data not loaded yet, or
+   *  genuinely zero findings) falls back to the plain-text count. */
+  findingsByRunId?: Map<string, FindingRecord[]>;
   /** Open the trace + log drawer for a run (the logs icon). */
   onOpenTrace: (runId: string) => void;
   /** Jump to this run's inline review accordion below (clicking the agent name). */
@@ -190,8 +218,12 @@ export function RunHistory({
                 </div>
               )}
               {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                  {findingsByRunId?.get(r.run_id) ? (
+                    <TimelineFindingsPills findings={findingsByRunId.get(r.run_id)!} />
+                  ) : (
+                    t("runStatus.findings", { count: r.findings_count ?? 0 })
+                  )}
                   {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
                 </div>
               )}

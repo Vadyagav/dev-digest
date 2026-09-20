@@ -48,11 +48,13 @@ export function usePrRuns(prId: string | null | undefined) {
 }
 
 // ---- Persisted reviews + findings for a PR ----
-export function usePrReviews(prId: string | null | undefined) {
+/** `opts.enabled` gates the query on top of the `!!prId` check — e.g. to
+ *  fetch lazily on hover (the PR list's FINDINGS popover) instead of eagerly. */
+export function usePrReviews(prId: string | null | undefined, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["reviews", prId],
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
-    enabled: !!prId,
+    enabled: !!prId && (opts?.enabled ?? true),
   });
 }
 

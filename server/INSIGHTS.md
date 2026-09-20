@@ -99,6 +99,17 @@ Added the column (migration `0010_stormy_medusa.sql`), stopped
 and added `cost_usd` to `PrMeta`/`RunSummary`/`RunStats` in both vendor
 contract copies. Server-side only — see `client/INSIGHTS.md` for the UI half.
 
+### 2026-09-20 — added `findings_by_severity` to the PR-list endpoint
+`pulls/routes.ts:132-152` adds one grouped query (`findings` inner-joined to
+`reviews`, `groupBy(reviews.prId, findings.severity)`, restricted to the
+already-computed latest-review ids) alongside the existing score/cost
+derivations — same "latest review, not a sum" semantics as SCORE (contrast
+with COST, which sums across every run — see the entry above on why COST
+needed a different reduction than SCORE; FINDINGS follows SCORE's rule, not
+COST's, because "N findings IN THIS RUN" is explicitly per-run by spec). No
+existing per-severity breakdown existed anywhere server-side before this —
+confirmed by grep across `modules/reviews/repository/*` before adding it.
+
 ### 2026-09-20 — added ESLint (flat config) — only 7 warnings, 0 errors, repo-wide
 Added `eslint@^10` + `@eslint/js` + `typescript-eslint` recommended (non
 type-checked) via `eslint.config.js:1-27`, `argsIgnorePattern: '^_'` to match
