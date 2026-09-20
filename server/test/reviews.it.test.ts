@@ -4,7 +4,7 @@ import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
-import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
+import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { Review } from '@devdigest/shared';
@@ -202,12 +202,23 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(trace.config.model).toBe('gpt-4.1');
     expect(trace.stats.grounding).toBe('1/2 passed');
     expect(trace.log.length).toBeGreaterThan(0);
+    // MockLLMProvider reports costUsd: 0.001 per call — the run's USD spend
+    // should flow through to the persisted trace, not be dropped.
+    expect(trace.stats.cost_usd).toBeGreaterThan(0);
 
     // agent_runs row populated for A5 to aggregate
     const [run] = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.id, runId));
     expect(run!.status).toBe('done');
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
+    expect(run!.costUsd).toBeGreaterThan(0);
+
+    // and the same cost surfaces on the PR list's COST column
+    const prList = (
+      await app.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
+    ).json();
+    const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
+    expect(listedPr.cost_usd).toBe(run!.costUsd);
 
     await app.close();
   });
