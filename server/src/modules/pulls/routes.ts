@@ -128,16 +128,23 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // FINDINGS and COST both use the same principle: for every DISTINCT
-    // agent that has ever run on the PR, count only its most recent
-    // run/review — re-running the same agent doesn't inflate the total —
-    // then SUM across all distinct agents. (SCORE above is different on
-    // purpose: it's a single overall "current" score, not additive, so it
-    // stays "latest review wins", full stop — no per-agent grouping.)
+    // FINDINGS and COST are deliberately DIFFERENT rules, not the same one:
     //
-    // Example: Test Quality Reviewer ran once (3 findings). General Reviewer
-    // ran three times in a row (its last run: 4 findings). The list shows
-    // 3 + 4 = 7, not 3 + (every General Reviewer run added together).
+    // FINDINGS (below): for every DISTINCT agent that has ever run on the
+    // PR, count only its most recent run/review — a superseded run's stale
+    // findings shouldn't inflate "how many issues does this PR currently
+    // have", then SUM across all distinct agents. Example: Test Quality
+    // Reviewer ran once (3 findings). General Reviewer ran three times in a
+    // row (its last run: 4 findings). The list shows 3 + 4 = 7, not 3 +
+    // (every General Reviewer run added together).
+    //
+    // COST (further below): the sum of EVERY successful run, no per-agent
+    // dedup — it's actual money already spent, not a "current state" — see
+    // that block's own comment for why.
+    //
+    // SCORE (above) is different again: a single overall "current" score,
+    // not additive, so it's just "latest review wins", full stop — no
+    // per-agent grouping at all.
     //
     // A review/run with no agentId (legacy/seeded data predating that link)
     // is never deduped against another — each counts as its own "agent" via
@@ -194,43 +201,25 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Total COST per PR for the list's COST column: sum of each distinct
-    // agent's most recent successful (status='done') run only. A run with
-    // an unknown cost (null) doesn't count toward the sum but doesn't zero
-    // it either; a PR with no done runs (or only unknown-cost ones) has no
-    // entry here and renders "—", never "$0.00".
+    // Total COST per PR for the list's COST column: the SUM of every
+    // successful (status='done') run's cost — deliberately NOT deduped per
+    // agent like FINDINGS above. Cost is actual money already spent: an
+    // agent re-run 3 times spent 3 runs' worth, and dropping the first 2
+    // would understate the PR's real spend. (FINDINGS instead reflects
+    // *current* outstanding issues, where a superseded run's stale findings
+    // shouldn't count — a different question with a different rule.) A run
+    // with an unknown cost (null) doesn't count toward the sum but doesn't
+    // zero it either; a PR with no done runs (or only unknown-cost ones) has
+    // no entry here and renders "—", never "$0.00".
     const totalRunCostByPr = new Map<string, number>();
     if (prIds.length > 0) {
       const runRows = await container.db
-        .select({
-          id: t.agentRuns.id,
-          prId: t.agentRuns.prId,
-          agentId: t.agentRuns.agentId,
-          ranAt: t.agentRuns.ranAt,
-          costUsd: t.agentRuns.costUsd,
-        })
+        .select({ prId: t.agentRuns.prId, costUsd: t.agentRuns.costUsd })
         .from(t.agentRuns)
         .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRuns.status, 'done')));
-      const latestRunByPrAndAgent = new Map<string, Map<string, { costUsd: number | null; ranAt: Date | null }>>();
       for (const run of runRows) {
-        if (!run.prId) continue;
-        const agentKey = run.agentId ?? run.id;
-        let byAgent = latestRunByPrAndAgent.get(run.prId);
-        if (!byAgent) {
-          byAgent = new Map();
-          latestRunByPrAndAgent.set(run.prId, byAgent);
-        }
-        const existing = byAgent.get(agentKey);
-        if (!existing || (run.ranAt?.getTime() ?? 0) > (existing.ranAt?.getTime() ?? 0)) {
-          byAgent.set(agentKey, { costUsd: run.costUsd, ranAt: run.ranAt });
-        }
-      }
-      for (const [prId, byAgent] of latestRunByPrAndAgent) {
-        let total: number | undefined;
-        for (const { costUsd } of byAgent.values()) {
-          if (costUsd != null) total = (total ?? 0) + costUsd;
-        }
-        if (total != null) totalRunCostByPr.set(prId, total);
+        if (!run.prId || run.costUsd == null) continue;
+        totalRunCostByPr.set(run.prId, (totalRunCostByPr.get(run.prId) ?? 0) + run.costUsd);
       }
     }
 
