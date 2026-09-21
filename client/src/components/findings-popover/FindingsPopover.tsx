@@ -9,19 +9,40 @@ import { useTranslations } from "next-intl";
 import { SeverityBadge, CategoryTag, ConfidenceNum, type Category } from "@devdigest/ui";
 import type { FindingRecord, Severity } from "@devdigest/shared";
 import { lineLabel } from "@/lib/findings";
+import { computeFlip, findClipBoundary, POPOVER_MAX_HEIGHT } from "./helpers";
 
 export function FindingsPopover({ findings }: { findings: FindingRecord[] }) {
   const t = useTranslations("prReview");
-  if (findings.length === 0) return null;
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [flip, setFlip] = React.useState<{ openUp: boolean; maxHeight: number }>({
+    openUp: false,
+    maxHeight: POPOVER_MAX_HEIGHT,
+  });
+
+  // Runs synchronously before paint — no visible flicker between the default
+  // (open-down) render used for measurement and the corrected placement.
+  React.useLayoutEffect(() => {
+    const el = rootRef.current;
+    const trigger = el?.parentElement;
+    if (!el || !trigger) return;
+    const triggerRect = trigger.getBoundingClientRect();
+    const boundary = findClipBoundary(el);
+    setFlip(computeFlip(triggerRect, boundary, el.scrollHeight));
+  }, []);
+
+  if (findings.length === 0) return null; // after hooks — Rules of Hooks
 
   return (
     <div
+      ref={rootRef}
+      data-placement={flip.openUp ? "up" : "down"}
       style={{
         position: "absolute",
-        top: "calc(100% + 6px)",
+        top: flip.openUp ? "auto" : "calc(100% + 6px)",
+        bottom: flip.openUp ? "calc(100% + 6px)" : "auto",
         left: 0,
         width: 320,
-        maxHeight: 380,
+        maxHeight: flip.maxHeight,
         overflowY: "auto",
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-strong)",

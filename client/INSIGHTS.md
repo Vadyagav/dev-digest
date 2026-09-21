@@ -49,6 +49,25 @@ hover is instant. The *counts* shown before any hover (the pill numbers)
 still come from the list response itself (`PrMeta.findings_by_severity`,
 server-aggregated) — only the full finding previews are lazy.
 
+### 2026-09-21 — no floating-positioning library exists; `FindingsPopover` now hand-rolls flip-to-fit
+`client/src/components/findings-popover/FindingsPopover.tsx` always opened
+downward (`top: calc(100% + 6px)`, no collision detection) and got hard-clipped
+by the PR list's `tableCard` (`pulls/styles.ts:86-92`, `overflow:"hidden"`)
+for the LAST row — that container has no `maxHeight`/scroll of its own, so
+its bottom edge sits right at the last row regardless of how much viewport
+space is actually left below. A window-height-only check would have missed
+this. Fixed by walking up for the nearest ancestor with a clipping `overflow`
+(`helpers.ts`'s `findClipBoundary`) and falling back to the viewport only
+when none exists — the two real call sites (`FindingsCell` inside
+`tableCard`, `TimelineFindingsPills` in `RunHistory.tsx` with no clipping
+ancestor at all) need genuinely different boundaries, confirmed by checking
+both before deciding on window-only. `client/src/vendor/ui/kit/Dropdown.tsx`
+has the identical unpatched bug — vendored/do-not-touch, left alone. No
+`@floating-ui/react`/`@popperjs/core`/`@radix-ui` is installed anywhere in
+`client/`; any future floating panel needing this will have to reuse (or
+extract to `lib/`) `computeFlip`/`findClipBoundary` rather than expecting a
+library to already handle it.
+
 ## Tool & Library Notes
 
 ### 2026-09-20 — `pnpm add` can leave `pnpm-workspace.yaml` with an invalid placeholder
