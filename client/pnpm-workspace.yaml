@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+  sharp: true
+  # unrs-resolver's postinstall is a native-binary build fallback; the
+  # prebuilt binary works fine (confirmed: `eslint`/`pnpm lint` run without
+  # it), so left un-trusted rather than auto-approving a compile step.
+  unrs-resolver: false

@@ -6,11 +6,12 @@
 "use client";
 
 import React from "react";
-import { Icon, Badge } from "@devdigest/ui";
-import type { ReviewRecord, Verdict } from "@devdigest/shared";
+import { Icon, Badge, Button, SeverityBadge, SEV } from "@devdigest/ui";
+import type { ReviewRecord, Severity, Verdict } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
+import { countBySeverity, SEVERITY_PILL_ORDER } from "@/lib/findings";
 
 const VERDICT_COLOR: Record<string, string> = {
   request_changes: "var(--crit)",
@@ -43,18 +44,23 @@ export function ReviewRunAccordion({
   targetNonce?: number;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const [severityFilter, setSeverityFilter] = React.useState<Severity | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
       setOpen(true);
       rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetRunId, targetNonce, review.run_id]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
   const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
+  // Counts drive both the pill row and the filter buttons below — computed
+  // from the raw (unfiltered-by-hideLow) findings, so in the default view
+  // (hideLow off, no severity filter) each pill's number equals exactly the
+  // finding-cards of that severity rendered in FindingsPanel below it.
+  const severityCounts = React.useMemo(() => countBySeverity(findings), [findings]);
 
   return (
     <div
@@ -147,11 +153,34 @@ export function ReviewRunAccordion({
               />
             </div>
           )}
+          {findings.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {SEVERITY_PILL_ORDER.filter((sev) => (severityCounts[sev] ?? 0) > 0).map((sev) => (
+                  <SeverityBadge key={sev} severity={sev} count={severityCounts[sev]} />
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {SEVERITY_PILL_ORDER.filter((sev) => (severityCounts[sev] ?? 0) > 0).map((sev) => (
+                  <Button
+                    key={sev}
+                    kind="secondary"
+                    size="sm"
+                    active={severityFilter === sev}
+                    onClick={() => setSeverityFilter((cur) => (cur === sev ? null : sev))}
+                  >
+                    {SEV[sev].label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <FindingsPanel
             findings={findings}
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={severityFilter}
           />
         </div>
       )}

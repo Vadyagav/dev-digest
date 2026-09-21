@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -113,19 +113,124 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
 
     // Latest-review SCORE per PR for the list's score ring. Computed on read
     // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // grouping is cheap.
     const prIds = rows.map((r) => r.id);
-    const latestReviewByPr = new Map<string, { score: number | null }>();
+    const latestReviewByPr = new Map<string, { id: string; score: number | null }>();
     if (prIds.length > 0) {
       const reviewRows = await container.db
-        .select({ prId: t.reviews.prId, score: t.reviews.score })
+        .select({ id: t.reviews.id, prId: t.reviews.prId, score: t.reviews.score })
         .from(t.reviews)
         .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
         .orderBy(desc(t.reviews.createdAt));
       // Rows are newest-first → first seen per PR is the latest review.
       for (const rv of reviewRows) {
-        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score });
+        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { id: rv.id, score: rv.score });
+      }
+    }
+
+    // FINDINGS and COST both use the same principle: for every DISTINCT
+    // agent that has ever run on the PR, count only its most recent
+    // run/review — re-running the same agent doesn't inflate the total —
+    // then SUM across all distinct agents. (SCORE above is different on
+    // purpose: it's a single overall "current" score, not additive, so it
+    // stays "latest review wins", full stop — no per-agent grouping.)
+    //
+    // Example: Test Quality Reviewer ran once (3 findings). General Reviewer
+    // ran three times in a row (its last run: 4 findings). The list shows
+    // 3 + 4 = 7, not 3 + (every General Reviewer run added together).
+    //
+    // A review/run with no agentId (legacy/seeded data predating that link)
+    // is never deduped against another — each counts as its own "agent" via
+    // a fallback key — since there's no way to tell whether two such rows
+    // came from the same reviewer.
+
+    // Per-severity FINDINGS breakdown for the list's FINDINGS column icon
+    // pills. `reviews.agentId` (not a run_id join — older/seeded reviews can
+    // have a null run_id) groups reviews per PR per agent; the newest
+    // `created_at` per group is the one whose findings count.
+    const findingsBySeverityByPr = new Map<string, Record<string, number>>();
+    const latestReviewIdByPrAndAgent = new Map<string, Map<string, { id: string; createdAt: Date | null }>>();
+    if (prIds.length > 0) {
+      const reviewRows = await container.db
+        .select({
+          id: t.reviews.id,
+          prId: t.reviews.prId,
+          agentId: t.reviews.agentId,
+          createdAt: t.reviews.createdAt,
+        })
+        .from(t.reviews)
+        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')));
+      for (const rv of reviewRows) {
+        const agentKey = rv.agentId ?? rv.id;
+        let byAgent = latestReviewIdByPrAndAgent.get(rv.prId);
+        if (!byAgent) {
+          byAgent = new Map();
+          latestReviewIdByPrAndAgent.set(rv.prId, byAgent);
+        }
+        const existing = byAgent.get(agentKey);
+        if (!existing || (rv.createdAt?.getTime() ?? 0) > (existing.createdAt?.getTime() ?? 0)) {
+          byAgent.set(agentKey, { id: rv.id, createdAt: rv.createdAt });
+        }
+      }
+      const latestPerAgentReviewIds = [...latestReviewIdByPrAndAgent.values()].flatMap((byAgent) =>
+        [...byAgent.values()].map((v) => v.id),
+      );
+      if (latestPerAgentReviewIds.length > 0) {
+        const countRows = await container.db
+          .select({
+            prId: t.reviews.prId,
+            severity: t.findings.severity,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(t.findings)
+          .innerJoin(t.reviews, eq(t.reviews.id, t.findings.reviewId))
+          .where(inArray(t.findings.reviewId, latestPerAgentReviewIds))
+          .groupBy(t.reviews.prId, t.findings.severity);
+        for (const row of countRows) {
+          const bySeverity = findingsBySeverityByPr.get(row.prId) ?? {};
+          bySeverity[row.severity] = row.count;
+          findingsBySeverityByPr.set(row.prId, bySeverity);
+        }
+      }
+    }
+
+    // Total COST per PR for the list's COST column: sum of each distinct
+    // agent's most recent successful (status='done') run only. A run with
+    // an unknown cost (null) doesn't count toward the sum but doesn't zero
+    // it either; a PR with no done runs (or only unknown-cost ones) has no
+    // entry here and renders "—", never "$0.00".
+    const totalRunCostByPr = new Map<string, number>();
+    if (prIds.length > 0) {
+      const runRows = await container.db
+        .select({
+          id: t.agentRuns.id,
+          prId: t.agentRuns.prId,
+          agentId: t.agentRuns.agentId,
+          ranAt: t.agentRuns.ranAt,
+          costUsd: t.agentRuns.costUsd,
+        })
+        .from(t.agentRuns)
+        .where(and(inArray(t.agentRuns.prId, prIds), eq(t.agentRuns.status, 'done')));
+      const latestRunByPrAndAgent = new Map<string, Map<string, { costUsd: number | null; ranAt: Date | null }>>();
+      for (const run of runRows) {
+        if (!run.prId) continue;
+        const agentKey = run.agentId ?? run.id;
+        let byAgent = latestRunByPrAndAgent.get(run.prId);
+        if (!byAgent) {
+          byAgent = new Map();
+          latestRunByPrAndAgent.set(run.prId, byAgent);
+        }
+        const existing = byAgent.get(agentKey);
+        if (!existing || (run.ranAt?.getTime() ?? 0) > (existing.ranAt?.getTime() ?? 0)) {
+          byAgent.set(agentKey, { costUsd: run.costUsd, ranAt: run.ranAt });
+        }
+      }
+      for (const [prId, byAgent] of latestRunByPrAndAgent) {
+        let total: number | undefined;
+        for (const { costUsd } of byAgent.values()) {
+          if (costUsd != null) total = (total ?? 0) + costUsd;
+        }
+        if (total != null) totalRunCostByPr.set(prId, total);
       }
     }
 
@@ -153,6 +258,8 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost_usd: totalRunCostByPr.get(r.id) ?? null,
+        findings_by_severity: findingsBySeverityByPr.get(r.id) ?? null,
       };
     });
   });

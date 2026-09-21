@@ -170,6 +170,20 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // Total USD cost on this PR (list endpoint only; null/absent when the PR
+  // has no completed run or none reported a cost). Summed across every
+  // DISTINCT agent that has ever run, but only that agent's MOST RECENT
+  // successful run — re-running the same agent doesn't inflate this; a
+  // different agent's run adds on top. Not a sum of every run ever.
+  cost_usd: z.number().nullish(),
+  // Finding counts by severity (list endpoint only; null/absent when the PR
+  // has no review yet). Same "latest per distinct agent, summed across
+  // agents" rule as cost_usd above — e.g. agent A's one run (3 findings) +
+  // agent B's third/final run (4 findings) = 7, not 3 + every one of B's
+  // runs added together. Keys are Severity values
+  // ("CRITICAL"/"WARNING"/"SUGGESTION"/"INFO"); absent severities had zero
+  // findings, never an explicit 0 entry.
+  findings_by_severity: z.record(z.string(), z.number().int()).nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 
