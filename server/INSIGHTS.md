@@ -25,6 +25,28 @@ below on why it needed SUM instead (`pulls/routes.ts:138-146`,
 per-run (e.g. current review status); use SUM/aggregate when the stat is a
 running total across a PR's history.
 
+### 2026-09-21 — three PR-list stats, three DIFFERENT aggregation rules (don't assume they match)
+`pulls/routes.ts` computes SCORE, FINDINGS, and COST for the list with three
+genuinely different reductions over the same `agent_runs`/`reviews` history,
+and they were repeatedly conflated mid-session before landing here — worth
+being explicit:
+- **SCORE**: single overall "latest review wins", no per-agent grouping at
+  all (`latestReviewByPr`, ~line 118).
+- **FINDINGS** (`findingsBySeverityByPr`, ~line 158): latest run **per
+  distinct agent** (keyed by `reviews.agentId ?? review.id`), summed across
+  agents. Rationale: reflects *current outstanding issues* — a superseded
+  run's stale findings shouldn't count forever.
+- **COST** (`totalRunCostByPr`, ~line 214): sum of **every** successful run,
+  no per-agent dedup at all. Rationale: cost is money already spent, not
+  current state — re-running an agent doesn't erase the earlier run's real
+  spend. This one briefly got changed to match FINDINGS' per-agent-latest
+  rule (matching a literal reading of "same principle as COST" in an early
+  request) and had to be reverted once the user clarified cost must reflect
+  total actual spend. Lesson: when two stats sound like they "should" follow
+  the same rule because they're computed from the same tables, check
+  whether the *domain meaning* (a running total vs. a current-state snapshot)
+  actually calls for the same reduction — it often doesn't.
+
 ### 2026-09-20 — a reverted commit is still a valid reference via `git show`
 Commit `93119a5` ("run cost badge") implemented `agent_runs.cost_usd` end to
 end but was reverted from `main` by `c6af1e4` as collateral damage of an

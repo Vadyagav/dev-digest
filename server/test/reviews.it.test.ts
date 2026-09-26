@@ -244,7 +244,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
-  it("PR list's COST and FINDINGS columns sum each DISTINCT agent's latest run only", async () => {
+  it("PR list's FINDINGS column sums each agent's LATEST run only; COST sums EVERY run", async () => {
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
 
     // Test Quality Reviewer runs once: 3 SUGGESTION findings.
@@ -290,20 +290,22 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     const grLatestRun = runs
       .filter((r) => r.agentId === gr.id)
       .sort((a, b) => b.ranAt!.getTime() - a.ranAt!.getTime())[0]!;
-    const expectedCost = (tqrRun.costUsd ?? 0) + (grLatestRun.costUsd ?? 0);
+    const perAgentLatestCost = (tqrRun.costUsd ?? 0) + (grLatestRun.costUsd ?? 0);
     // The three General Reviewer runs must each have cost, so summing ALL
-    // four runs would differ from summing just the two agents' latest runs.
-    expect(sumOfAllRunCosts).not.toBeCloseTo(expectedCost, 10);
+    // four runs differs from summing just the two agents' latest runs —
+    // otherwise this test can't tell which rule the endpoint actually used.
+    expect(sumOfAllRunCosts).not.toBeCloseTo(perAgentLatestCost, 10);
 
     const prList = (
       await grApp3.inject({ method: 'GET', url: `/repos/${pr.repoId}/pulls` })
     ).json();
     const listedPr = prList.find((p: { id: string }) => p.id === pr.id);
-    expect(listedPr.cost_usd).toBeCloseTo(expectedCost, 10);
-    expect(listedPr.cost_usd).not.toBeCloseTo(sumOfAllRunCosts, 10);
-    // 3 (TQR's only run) + 4 (GR's FINAL run only) = 7 total WARNING+SUGGESTION
-    // findings — NOT 3 + (1 + 2 + 4) = 10, which is what summing every GR
-    // run individually would give.
+    // COST is money already spent — ALL 4 runs' cost, not deduped per agent.
+    expect(listedPr.cost_usd).toBeCloseTo(sumOfAllRunCosts, 10);
+    expect(listedPr.cost_usd).not.toBeCloseTo(perAgentLatestCost, 10);
+    // FINDINGS reflects current outstanding issues: 3 (TQR's only run) + 4
+    // (GR's FINAL run only) = 7 — NOT 3 + (1 + 2 + 4) = 10, which is what
+    // summing every GR run individually would give.
     expect(listedPr.findings_by_severity).toEqual({ SUGGESTION: 3, WARNING: 4 });
 
     await grApp3.close();
