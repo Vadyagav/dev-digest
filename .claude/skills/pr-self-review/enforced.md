@@ -2,7 +2,7 @@
 
 Run every item here against the full diff scope (from `SKILL.md` step 1),
 **regardless of which rows in [routing.md](routing.md) matched.** These
-come straight from the root `CLAUDE.md` and aren't owned by any single
+come straight from the root `AGENTS.md` and aren't owned by any single
 domain skill — this file is the only place they're enforced. Report each
 hit as its own finding, tagged with the severity given here.
 
@@ -47,7 +47,7 @@ git diff --name-only $base...HEAD -- server/src/vendor/shared client/src/vendor/
 If `server/src/vendor/shared/**` changed, the same logical contract change
 must appear in `client/src/vendor/shared/**` in the same scope, and vice
 versa. If only one side moved → `CRITICAL`: these two copies must stay
-byte-identical per CLAUDE.md; no build step syncs them.
+byte-identical per AGENTS.md; no build step syncs them.
 
 ## 4. Test naming / unit-integration CI split — CRITICAL
 
@@ -57,7 +57,7 @@ For every new or changed `*.test.ts` file under `server/`:
   calls into `container.db` outside an explicit mock → it **must** be
   named `*.it.test.ts`. A `*.test.ts` file with real DB usage is
   `CRITICAL` (silently breaks the unit/integration split and the CI path
-  filters that depend on it, per CLAUDE.md).
+  filters that depend on it, per AGENTS.md).
 - Conversely, a `*.it.test.ts` file with **no** DB usage at all is the
   inverse mistake — also worth flagging (`HIGH`): it'll run in the slower
   integration lane for no reason.
@@ -71,7 +71,7 @@ git diff $base...HEAD -- server/ | grep -n '^\+.*process\.env\.'
 Any newly-added `process.env.*` read for something secret-shaped (a key,
 token, password, credential) that doesn't go through
 `LocalSecretsProvider` first → `HIGH`. `process.env` is meant to be a
-fallback only, per CLAUDE.md; `GITHUB_TOKEN` is canonical, `GITHUB_PAT` is
+fallback only, per AGENTS.md; `GITHUB_TOKEN` is canonical, `GITHUB_PAT` is
 accepted only as a fallback — a new direct `GITHUB_PAT` read without
 `GITHUB_TOKEN` present is the same category of miss.
 

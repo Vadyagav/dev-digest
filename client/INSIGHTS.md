@@ -68,6 +68,17 @@ has the identical unpatched bug — vendored/do-not-touch, left alone. No
 extract to `lib/`) `computeFlip`/`findClipBoundary` rather than expecting a
 library to already handle it.
 
+### 2026-10-29 — shared confirm modal + skill create/import modals
+Destructive card actions (Delete skill / Delete agent) go through
+`components/confirm-dialog` (Modal with Cancel / Delete / X) — don't use
+`window.confirm`. The Skills list "Add" menu opens `SkillFormModal` (create)
+or `ImportSkillModal` (file → parsed preview → same form, opened on the
+rendered Preview tab); `/skills/new` still exists as a full-page fallback.
+In the agent Skills tab only enabled rows are sortable (`useSortable({
+disabled: !checked })`) — disabled rows are neither drag sources nor drop
+targets.
+
+
 ## Tool & Library Notes
 
 ### 2026-09-20 — `pnpm add` can leave `pnpm-workspace.yaml` with an invalid placeholder

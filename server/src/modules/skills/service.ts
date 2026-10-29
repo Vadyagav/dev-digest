@@ -35,12 +35,15 @@ export class SkillsService {
 
   async list(workspaceId: string): Promise<Skill[]> {
     const rows = await this.repo.list(workspaceId);
-    return rows.map(toSkillDto);
+    const counts = await this.repo.agentCounts(rows.map((r) => r.id));
+    return rows.map((r) => toSkillDto(r, counts.get(r.id) ?? 0));
   }
 
   async get(workspaceId: string, id: string): Promise<Skill | undefined> {
     const row = await this.repo.getById(workspaceId, id);
-    return row ? toSkillDto(row) : undefined;
+    if (!row) return undefined;
+    const counts = await this.repo.agentCounts([row.id]);
+    return toSkillDto(row, counts.get(row.id) ?? 0);
   }
 
   /** Delete a skill (and its versions, via cascade). */

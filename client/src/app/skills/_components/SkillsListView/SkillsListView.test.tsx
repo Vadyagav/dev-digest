@@ -4,10 +4,6 @@ import { NextIntlClientProvider } from "next-intl";
 import type { Skill } from "@devdigest/shared";
 import messages from "../../../../../messages/en/skills.json";
 
-const push = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
-}));
 vi.mock("../../../../components/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -19,11 +15,19 @@ vi.mock("./_components/SkillPreviewDrawer", () => ({
   ),
 }));
 
+vi.mock("./_components/SkillFormModal", () => ({
+  SkillFormModal: () => <div role="dialog">create-modal</div>,
+}));
+vi.mock("./_components/ImportSkillModal", () => ({
+  ImportSkillModal: () => <div role="dialog">import-modal</div>,
+}));
+
 const update = vi.fn();
 let skillsState: { data: Skill[] | undefined; isLoading: boolean; isError: boolean };
 vi.mock("../../../../lib/hooks/skills", () => ({
   useSkills: () => skillsState,
   useUpdateSkill: () => ({ mutate: update }),
+  useDeleteSkill: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 import { SkillsListView } from "./SkillsListView";
@@ -88,15 +92,17 @@ describe("SkillsListView", () => {
     expect(screen.queryByTestId("preview-drawer")).not.toBeInTheDocument();
   });
 
-  it("the Add dropdown offers Create new and Import, each navigating to the entry-point route", () => {
+  it("the Add dropdown offers Create new (form modal) and Import (import modal)", () => {
     skillsState = { data: [], isLoading: false, isError: false };
     renderWithIntl();
     fireEvent.click(screen.getByText("Add Skill"));
     fireEvent.click(screen.getByText("Create new"));
-    expect(push).toHaveBeenCalledWith("/skills/new");
+    expect(screen.getByText("create-modal")).toBeInTheDocument();
+    cleanup();
 
+    renderWithIntl();
     fireEvent.click(screen.getByText("Add Skill"));
     fireEvent.click(screen.getByText("Import"));
-    expect(push).toHaveBeenCalledWith("/skills/new?import=1");
+    expect(screen.getByText("import-modal")).toBeInTheDocument();
   });
 });

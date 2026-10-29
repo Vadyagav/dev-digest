@@ -53,7 +53,7 @@ repo (`repo-intel`, `reviews`) and both violated by the routes-only modules
   don't belong in the HTTP layer.
 - **A service never imports a concrete adapter class directly**
   (`src/adapters/openrouter.ts`, etc.) — it goes through `container.<adapter>`.
-  This is `server/CLAUDE.md`'s existing "services never call an external
+  This is `server/AGENTS.md`'s existing "services never call an external
   adapter directly" rule, restated as the outer-ring/inner-ring dependency
   direction, plus its missing counterpart for the database.
 
@@ -63,7 +63,7 @@ never import anything module-specific, or the dependency arrow reverses.
 
 ## 2. The threshold rule for `repository.ts` (CRITICAL)
 
-`server/CLAUDE.md` currently documents `service.ts`/`repository.ts` as
+`server/AGENTS.md` currently documents `service.ts`/`repository.ts` as
 *optional* per module. That wording is why 4 modules collapsed all three
 rings into `routes.ts`. This skill makes the threshold concrete:
 
@@ -103,7 +103,7 @@ aggregate/table-group — not by line count alone.
 
 ## 4. Naming conventions (HIGH)
 
-Restated from `server/CLAUDE.md` (this skill is the natural place to check
+Restated from `server/AGENTS.md` (this skill is the natural place to check
 them while adding a module):
 
 - Module folders: `kebab-case`, one noun/feature per folder
@@ -119,7 +119,7 @@ them while adding a module):
 |---|---|---|
 | `container.db` called in `routes.ts` | Fuses HTTP + persistence; the query can't be unit-tested without a live route | `modules/pulls/routes.ts`, `modules/settings/routes.ts`, `modules/polling/routes.ts`, `modules/workspace/routes.ts` |
 | Business logic (upsert/sync loops) embedded in a handler | Only integration-testable; can't be exercised without a real/mocked HTTP request | `modules/pulls/routes.ts`'s GitHub PR sync loop |
-| Service importing a concrete adapter class directly | Breaks the DI/mocking seam `src/adapters/mocks.ts` relies on for tests | — (rule already in `server/CLAUDE.md`) |
+| Service importing a concrete adapter class directly | Breaks the DI/mocking seam `src/adapters/mocks.ts` relies on for tests | — (rule already in `server/AGENTS.md`) |
 | Hand-duplicating a contract shape instead of importing `src/vendor/shared` | Drifts silently from the client's mirrored copy of the same contract | — |
 | Repository importing another module's repository | Crosses the data-access ring sideways instead of composing at the service layer | — |
 

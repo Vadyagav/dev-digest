@@ -7,7 +7,7 @@ import { z } from "zod";
 import { api } from "../api";
 // Value (not `import type`) import — doubles as the runtime schema used to
 // validate the /skills and /skills/:id responses below.
-import { Skill } from "@devdigest/shared";
+import { Skill, SkillVersion } from "@devdigest/shared";
 import type { SkillType, SkillSource } from "@devdigest/shared";
 
 export function useSkills() {
@@ -21,6 +21,15 @@ export function useSkill(id: string | null | undefined) {
   return useQuery({
     queryKey: ["skills", id],
     queryFn: () => api.get(`/skills/${id}`, Skill),
+    enabled: !!id,
+  });
+}
+
+/** Body-snapshot history for a skill, newest version first. */
+export function useSkillVersions(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["skills", id, "versions"],
+    queryFn: () => api.get(`/skills/${id}/versions`, z.array(SkillVersion)),
     enabled: !!id,
   });
 }
@@ -53,8 +62,8 @@ export function useUpdateSkill() {
   return useMutation({
     mutationFn: ({ id, patch }: UpdateSkillInput) => api.put(`/skills/${id}`, patch, Skill),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["skills"] });
       qc.setQueryData(["skills", data.id], data);
+      qc.invalidateQueries({ queryKey: ["skills"] });
     },
   });
 }

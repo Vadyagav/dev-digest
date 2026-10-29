@@ -30,7 +30,7 @@ export const s = {
     border: "1px solid var(--border)",
     background: "var(--bg-surface)",
   } satisfies CSSProperties,
-  dragHandle: {
+  dragHandle: (enabled: boolean): CSSProperties => ({
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -40,9 +40,10 @@ export const s = {
     border: "none",
     background: "none",
     color: "var(--text-muted)",
-    cursor: "grab",
+    cursor: enabled ? "grab" : "not-allowed",
+    opacity: enabled ? 1 : 0.35,
     touchAction: "none",
-  } satisfies CSSProperties,
+  }),
   name: { flex: 1, fontSize: 14, color: "var(--text-primary)", fontWeight: 500 } satisfies CSSProperties,
   empty: {
     padding: "24px 0",

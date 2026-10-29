@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import messages from "../../../../../../messages/en/skills.json";
-import type { SkillImportPreview } from "../../../../../lib/hooks/skills";
+import messages from "../../../../../messages/en/skills.json";
+import type { SkillImportPreview } from "../../../../lib/hooks/skills";
 
 const { importMutateSpy } = vi.hoisted(() => ({ importMutateSpy: vi.fn() }));
 
@@ -15,7 +15,7 @@ const PREVIEW: SkillImportPreview = {
   evidence_files: ["security-notes.md"],
 };
 
-vi.mock("../../../../../lib/hooks/skills", () => ({
+vi.mock("../../../../lib/hooks/skills", () => ({
   useImportSkillPreview: () => ({
     isPending: false,
     isError: false,

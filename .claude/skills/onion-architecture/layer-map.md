@@ -9,12 +9,14 @@ known-debt one (don't add a new violation on top of it; see
 | Module | routes.ts | service.ts | repository.ts | `container.db` in routes.ts | Status |
 |---|---|---|---|---|---|
 | `agents` | ✓ | ✓ | ✓ | no | Compliant |
+| `conventions` | ✓ | ✓ | ✓ | no | Compliant (service composes `skills/service.ts` to create/update `repo-conventions`, links via `container.agentsRepo`) |
 | `polling` | ✓ | ✓ | ✓ | no | Compliant (`service.ts` composes `pulls/service.ts` for the shared GitHub-PR sync — see its own repository.ts for the `last_polled_at` bump) |
 | `pulls` | ✓ | ✓ | ✓ | no | Compliant |
 | `repo-intel` | ✓ | ✓ | ✓ | no | Compliant |
 | `repos` | ✓ | ✓ | ✓ | no | Compliant |
 | `reviews` | ✓ | ✓ | ✓ (split: `repository/{pull,review,run}.repo.ts`, §3) | no | Compliant |
 | `settings` | ✓ | ✓ | ✓ | no | Compliant |
+| `skills` | ✓ | ✓ | ✓ | no | Compliant |
 | `workspace` | ✓ | — | ✓ | no | Compliant (routes-only genuinely fine: single pass-through read, calls `WorkspaceRepository` directly per SKILL.md §1) |
 
 `_shared/` is not a module — it's cross-module request-context/schema

@@ -19,6 +19,10 @@ import { Row, Stat } from "../atoms";
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
   const t = useTranslations("runs");
   const stats = trace.stats;
+  const skills = trace.prompt_assembly.skills ?? [];
+  // Tokens of the skills block alone (sum of each injected skill body's
+  // tokenizer count) — not the whole prompt.
+  const skillsTokens = skills.reduce((sum, sk) => sum + sk.tokens, 0);
   return (
     <>
       <TraceSection icon="Settings" title={t("trace.configuration")}>
@@ -73,7 +77,14 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
 
       <TraceSection icon="FileText" title={t("trace.promptAssembly")} defaultOpen={false}>
         <PromptBlock label={t("trace.prompt.system")} text={trace.prompt_assembly.system} color={PROMPT_COLORS.system} />
-        {trace.prompt_assembly.skills?.map((skill, i) => (
+        {skills.length > 0 && (
+          <div style={s.skillsHeader(PROMPT_COLORS.skills)} data-testid="skills-block-header">
+            {t("trace.prompt.skills")}
+            <span>{t("trace.prompt.skillsCount", { count: skills.length })}</span>
+            <span style={s.skillsTokens}>{t("trace.prompt.tokenCount", { count: skillsTokens })}</span>
+          </div>
+        )}
+        {skills.map((skill, i) => (
           <PromptBlock
             key={`${skill.name}-${i}`}
             label={t("trace.prompt.skill", { name: skill.name })}

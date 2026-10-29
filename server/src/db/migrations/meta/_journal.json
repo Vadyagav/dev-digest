@@ -85,6 +85,13 @@
       "when": 1790623848207,
       "tag": "0011_low_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793272282343,
+      "tag": "0012_clever_harrier",
+      "breakpoints": true
     }
   ]
 }

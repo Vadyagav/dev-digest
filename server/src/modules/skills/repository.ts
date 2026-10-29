@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { SkillSource, SkillType } from '@devdigest/shared';
@@ -39,6 +39,17 @@ export class SkillsRepository {
 
   async list(workspaceId: string): Promise<SkillRow[]> {
     return this.db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId));
+  }
+
+  /** skill id → number of agents linked to it (skills with no links are absent). */
+  async agentCounts(skillIds: string[]): Promise<Map<string, number>> {
+    if (skillIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ skillId: t.agentSkills.skillId, n: count() })
+      .from(t.agentSkills)
+      .where(inArray(t.agentSkills.skillId, skillIds))
+      .groupBy(t.agentSkills.skillId);
+    return new Map(rows.map((r) => [r.skillId, Number(r.n)]));
   }
 
   async getById(workspaceId: string, id: string): Promise<SkillRow | undefined> {

@@ -56,7 +56,8 @@
       "noMatches": "No matches for “{q}”.",
       "skill": "Skill: {name}",
       "imported": "Imported",
-      "tokenCount": "{count} tok"
+      "tokenCount": "{count} tok",
+      "skillsCount": "{count, plural, one {# skill} other {# skills}}"
     },
     "tools": {
       "args": "args",
@@ -71,7 +72,7 @@
     "running": "running",
     "completed": "completed",
     "copyRawOutput": "Copy raw output",
-  "copied": "Copied!",
+    "copied": "Copied!",
     "tracePending": "Trace is written when the run completes — see the Live log tab.",
     "loadingTrace": "Loading trace…",
     "noTrace": "No trace available yet."

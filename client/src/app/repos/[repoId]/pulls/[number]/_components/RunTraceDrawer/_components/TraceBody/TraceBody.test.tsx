@@ -63,7 +63,8 @@ describe("TraceBody — prompt assembly skills", () => {
   it("shows the token count chip per skill", () => {
     const trace = traceWithSkills([{ name: "lint-rules", body: "### lint", tokens: 142, untrusted: false }]);
     renderWithPromptAssemblyOpen(<TraceBody trace={trace} findings={[]} />);
-    expect(screen.getByText("142 tok")).toBeInTheDocument();
+    // One chip on the skill's own block + the Skills block total (same value with one skill).
+    expect(screen.getAllByText("142 tok")).toHaveLength(2);
   });
 
   it("shows the Imported badge only for untrusted skills", () => {
@@ -73,5 +74,22 @@ describe("TraceBody — prompt assembly skills", () => {
     ]);
     renderWithPromptAssemblyOpen(<TraceBody trace={trace} findings={[]} />);
     expect(screen.getAllByText("Imported")).toHaveLength(1);
+  });
+
+  it("shows one Skills block header with the token total of just the skills", () => {
+    const trace = traceWithSkills([
+      { name: "lint-rules", body: "### lint", tokens: 100, untrusted: false },
+      { name: "security-checklist", body: "### security", tokens: 250, untrusted: false },
+    ]);
+    renderWithPromptAssemblyOpen(<TraceBody trace={trace} findings={[]} />);
+    const header = screen.getByTestId("skills-block-header");
+    expect(header).toHaveTextContent("Skills (dynamic)");
+    expect(header).toHaveTextContent("2 skills");
+    expect(header).toHaveTextContent("350 tok");
+  });
+
+  it("renders no Skills block header when no skill was injected", () => {
+    renderWithPromptAssemblyOpen(<TraceBody trace={traceWithSkills([])} findings={[]} />);
+    expect(screen.queryByTestId("skills-block-header")).not.toBeInTheDocument();
   });
 });

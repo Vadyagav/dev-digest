@@ -12,6 +12,14 @@ export const s = {
     marginBottom: 10,
   }),
   headerRow: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  deleteBtn: (pending: boolean): CSSProperties => ({
+    background: "none",
+    border: "none",
+    cursor: pending ? "not-allowed" : "pointer",
+    color: "var(--text-muted)",
+    display: "inline-flex",
+    padding: 4,
+  }),
   iconBox: {
     width: 26,
     height: 26,

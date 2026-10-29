@@ -128,8 +128,19 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  /** Number of agents this skill is linked to (list/get responses). */
+  agent_count: z.number().int().nullish(),
 });
 export type Skill = z.infer<typeof Skill>;
+
+/** One immutable body snapshot of a skill (`GET /skills/:id/versions`). */
+export const SkillVersion = z.object({
+  skill_id: z.string(),
+  version: z.number().int(),
+  body: z.string(),
+  created_at: z.string(),
+});
+export type SkillVersion = z.infer<typeof SkillVersion>;
 
 export const CommunitySkill = z.object({
   name: z.string(),
@@ -141,12 +152,31 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+export const ConventionCategory = z.enum([
+  'naming',
+  'structure',
+  'error-handling',
+  'testing',
+  'typing',
+  'imports',
+  'style',
+  'other',
+]);
+export type ConventionCategory = z.infer<typeof ConventionCategory>;
+
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
+/** A convention candidate extracted from a repo by the conventions LLM pass. */
 export const ConventionCandidate = z.object({
   id: z.string(),
+  category: ConventionCategory,
   rule: z.string(),
   evidence_path: z.string(),
+  evidence_line: z.number().int().nullish(),
   evidence_snippet: z.string(),
   confidence: z.number().min(0).max(1),
+  status: ConventionStatus,
   accepted: z.boolean(),
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
@@ -188,6 +218,8 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  /** Number of skills linked to this agent (list response only). */
+  skill_count: z.number().int().nullish(),
 });
 export type Agent = z.infer<typeof Agent>;
 

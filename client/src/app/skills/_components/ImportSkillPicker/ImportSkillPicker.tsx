@@ -7,13 +7,20 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { ApiError } from "../../../../../lib/api";
-import { useImportSkillPreview } from "../../../../../lib/hooks/skills";
-import type { SkillImportPreview } from "../../../../../lib/hooks/skills";
+import { ApiError } from "../../../../lib/api";
+import { useImportSkillPreview } from "../../../../lib/hooks/skills";
+import type { SkillImportPreview } from "../../../../lib/hooks/skills";
 import { fileToBase64 } from "./helpers";
 import { s } from "./styles";
 
-export function ImportSkillPicker({ onImported }: { onImported: (preview: SkillImportPreview) => void }) {
+export function ImportSkillPicker({
+  onImported,
+  hideHeading = false,
+}: {
+  onImported: (preview: SkillImportPreview) => void;
+  /** Inside a modal the title is already in the modal header. */
+  hideHeading?: boolean;
+}) {
   const t = useTranslations("skills");
   const importPreview = useImportSkillPreview();
 
@@ -29,7 +36,7 @@ export function ImportSkillPicker({ onImported }: { onImported: (preview: SkillI
 
   return (
     <div style={s.wrap}>
-      <h2 style={s.h2}>{t("import.title")}</h2>
+      {!hideHeading && <h2 style={s.h2}>{t("import.title")}</h2>}
       <p style={s.subtitle}>{t("import.subtitle")}</p>
       <input
         type="file"

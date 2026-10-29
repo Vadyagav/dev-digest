@@ -9,6 +9,13 @@ in the DB). The canonical, reviewable copies live next to this file:
 - [`general-reviewer.md`](./general-reviewer.md)
 - [`security-reviewer.md`](./security-reviewer.md)
 - [`performance-reviewer.md`](./performance-reviewer.md)
+- [`test-quality-reviewer.md`](./test-quality-reviewer.md) — generic; the
+  `test-coverage-branches` skill carries the branch/edge-case rule
+- [`api-contract-reviewer.md`](./api-contract-reviewer.md) — generic; the
+  `breaking-change`, `response-schema`, `semver-discipline` and
+  `deprecation-policy` skills carry the contract rules
+
+The built-in skill bodies are seeded from `server/src/db/seed-skills.ts`.
 
 > The DB is the source of truth at run time. These files are the human-readable
 > originals — when you change a prompt, edit the file here **and** push it to the

@@ -11,6 +11,14 @@ export const s = {
     opacity: enabled ? 1 : 0.6,
   }),
   headerRow: { display: "flex", alignItems: "center", gap: 10 } satisfies CSSProperties,
+  deleteBtn: (pending: boolean): CSSProperties => ({
+    background: "none",
+    border: "none",
+    cursor: pending ? "not-allowed" : "pointer",
+    color: "var(--text-muted)",
+    display: "inline-flex",
+    padding: 4,
+  }),
   iconBox: (color: string): CSSProperties => ({
     width: 26,
     height: 26,
@@ -39,4 +47,6 @@ export const s = {
     textOverflow: "ellipsis",
   } satisfies CSSProperties,
   metaRow: { display: "flex", alignItems: "center", gap: 8 } satisfies CSSProperties,
+  spacer: { flex: 1 } satisfies CSSProperties,
+  version: { fontSize: 11.5, color: "var(--text-muted)" } satisfies CSSProperties,
 } as const;

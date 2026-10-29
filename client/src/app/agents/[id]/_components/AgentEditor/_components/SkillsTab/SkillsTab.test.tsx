@@ -74,7 +74,7 @@ describe("SkillsTab", () => {
 
   it("checking an unlinked skill POSTs it appended at the end of the checked order", () => {
     renderTab();
-    const checkboxes = screen.getAllByRole("checkbox");
+    const checkboxes = screen.getAllByRole("switch");
     // Display order is [sk2 (checked), sk3 (unchecked), sk1 (unchecked)].
     const securityRubricCheckbox = checkboxes[2]!;
     fireEvent.click(securityRubricCheckbox);
@@ -83,9 +83,16 @@ describe("SkillsTab", () => {
 
   it("unchecking a linked skill removes it from the posted skill_ids", () => {
     renderTab();
-    const checkboxes = screen.getAllByRole("checkbox");
+    const checkboxes = screen.getAllByRole("switch");
     fireEvent.click(checkboxes[0]!); // sk2, the only initially-checked row
     expect(mutateMock).toHaveBeenCalledWith({ agentId: "ag1", skillIds: [] });
+  });
+
+  it("only enabled (linked) rows have an active drag handle", () => {
+    renderTab();
+    const handles = screen.getAllByRole("button", { name: "Drag to reorder" });
+    // Display order is [sk2 (enabled), sk3, sk1].
+    expect(handles.map((h) => (h as HTMLButtonElement).disabled)).toEqual([false, true, true]);
   });
 
   it("filters the list by name", () => {

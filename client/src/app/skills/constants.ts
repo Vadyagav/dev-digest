@@ -12,3 +12,6 @@ export const SKILL_TYPE_META: Record<SkillType, { icon: IconName; color: string 
 
 /** Card grid template (responsive auto-fill). Mirrors agents/_components/AgentsListView's CARD_GRID_COLS. */
 export const CARD_GRID_COLS = "repeat(auto-fill, minmax(280px, 1fr))";
+
+/** Selectable skill types, in display order (labels are i18n'd in the components). */
+export const SKILL_TYPE_VALUES: readonly SkillType[] = ["rubric", "convention", "security", "custom"];

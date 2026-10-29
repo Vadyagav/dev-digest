@@ -1,13 +1,13 @@
 ---
 name: pr-self-review
 version: 1.0.0
-description: "Reviews the local diff (working tree + unpushed commits) across all four packages before a PR goes up: routes changed files to the matching domain skills (frontend-ui-architecture, onion-architecture, security, drizzle-orm-patterns, etc. — see routing.md), runs this repo's own CLAUDE.md hard rules (do-not-touch paths, vendor mirroring, migration immutability, secrets, test coverage — see enforced.md), and blocks with a clear BLOCKED verdict on any critical finding. Use before opening a PR, before running `gh pr create`, when asked 'is this ready to merge/ship', or via /pr-self-review. Does NOT replace generic bug-hunting (use code-review) or lint/typecheck (this skill runs them itself as a fast-fail gate first)."
+description: "Reviews the local diff (working tree + unpushed commits) across all four packages before a PR goes up: routes changed files to the matching domain skills (frontend-ui-architecture, onion-architecture, security, drizzle-orm-patterns, etc. — see routing.md), runs this repo's own AGENTS.md hard rules (do-not-touch paths, vendor mirroring, migration immutability, secrets, test coverage — see enforced.md), and blocks with a clear BLOCKED verdict on any critical finding. Use before opening a PR, before running `gh pr create`, when asked 'is this ready to merge/ship', or via /pr-self-review. Does NOT replace generic bug-hunting (use code-review) or lint/typecheck (this skill runs them itself as a fast-fail gate first)."
 ---
 
 # PR Self-Review
 
 Routes the local diff to the domain skills that actually own each changed
-file, plus this repo's own hard rules from the root `CLAUDE.md`, and
+file, plus this repo's own hard rules from the root `AGENTS.md`, and
 produces one severity-tagged, pass/fail verdict before a PR is opened.
 
 Routing table: [routing.md](routing.md). Hard-rule checklist:
@@ -16,7 +16,7 @@ Routing table: [routing.md](routing.md). Hard-rule checklist:
 
 This is a *process* skill — it doesn't carry its own domain opinions. It
 orchestrates the 13 other skills in `.claude/skills/` against the parts of
-the diff each one owns, and adds the checks none of them own (CLAUDE.md's
+the diff each one owns, and adds the checks none of them own (AGENTS.md's
 own do-not-touch list, secrets, test coverage).
 
 ## Non-goals
@@ -91,7 +91,7 @@ deduplicated across skills.
 
 Work through every item in [enforced.md](enforced.md) against the full
 diff scope from step 1 — inline in this session (mostly `grep`/`git diff
---stat`), not as a fork. These are checks CLAUDE.md states directly and
+--stat`), not as a fork. These are checks AGENTS.md states directly and
 that no single domain skill owns.
 
 ### Step 4 — Fan out domain review forks

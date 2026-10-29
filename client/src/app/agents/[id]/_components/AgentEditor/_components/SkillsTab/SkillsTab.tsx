@@ -13,7 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Checkbox, ErrorState, Icon, Skeleton, TextInput } from "@devdigest/ui";
+import { Badge, ErrorState, Icon, Skeleton, TextInput, Toggle } from "@devdigest/ui";
 import type { Agent, AgentSkillLink, Skill } from "@devdigest/shared";
 import { useAgentSkills, useSetAgentSkills } from "../../../../../../../lib/hooks/agents";
 import { useSkills } from "../../../../../../../lib/hooks/skills";
@@ -22,8 +22,9 @@ import { checkedOrder, computeInitialChecked, computeInitialOrder, reorderVisibl
 import { s } from "./styles";
 
 /** Skills tab — every workspace skill, merged with this agent's linked order.
-    Checking a row links it (appended at the end); dragging reorders the
-    displayed list. Both immediately POST the full checked-and-ordered
+    Toggling a row on links it (appended at the end); dragging reorders the
+    displayed list — only enabled (linked) rows are draggable, since only they
+    reach the prompt. Both immediately POST the full enabled-and-ordered
     skill_ids list via useSetAgentSkills — there's no separate link/unlink/
     reorder endpoint. */
 export function SkillsTab({ agent }: { agent: Agent }) {
@@ -131,7 +132,12 @@ function SkillsList({ agentId, skills, links }: { agentId: string; skills: Skill
 
 function SkillRow({ skill, checked, onToggle }: { skill: Skill; checked: boolean; onToggle: () => void }) {
   const t = useTranslations("agents");
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: skill.id });
+  // Disabled rows are neither draggable nor drop targets: order only matters
+  // for skills that are actually injected into the prompt.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: skill.id,
+    disabled: !checked,
+  });
   const style: React.CSSProperties = {
     ...s.row,
     transform: CSS.Transform.toString(transform),
@@ -140,10 +146,17 @@ function SkillRow({ skill, checked, onToggle }: { skill: Skill; checked: boolean
   };
   return (
     <div ref={setNodeRef} style={style}>
-      <button type="button" aria-label="Drag to reorder" style={s.dragHandle} {...attributes} {...listeners}>
+      <button
+        type="button"
+        aria-label={t("skills.dragHandle")}
+        disabled={!checked}
+        style={s.dragHandle(checked)}
+        {...attributes}
+        {...listeners}
+      >
         <Icon.Menu size={14} />
       </button>
-      <Checkbox checked={checked} onChange={onToggle} />
+      <Toggle on={checked} onChange={onToggle} size={14} />
       <span style={s.name}>{skill.name}</span>
       <Badge color={SKILL_TYPE_COLOR[skill.type]} bg="transparent">
         {skill.type}

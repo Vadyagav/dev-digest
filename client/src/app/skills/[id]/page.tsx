@@ -1,6 +1,7 @@
-/* /skills/:id — Skill Editor. `id === "new"` is the create route; `?import=1`
-   on it shows the import file-picker first and pre-fills the editor from its
-   preview once resolved, instead of an empty form. */
+/* /skills/:id — a persisted skill's Config / Preview / Versioning tabs
+   (SkillDetail). `id === "new"` is the full-page create route; `?import=1` on
+   it shows the import file-picker first and pre-fills the editor from its
+   preview once resolved. (The Skills list's Add menu uses modals instead.) */
 "use client";
 
 import React from "react";
@@ -9,7 +10,8 @@ import { useTranslations } from "next-intl";
 import { ErrorState, Skeleton } from "@devdigest/ui";
 import { AppShell } from "../../../components/app-shell";
 import { SkillEditor } from "./_components/SkillEditor";
-import { ImportSkillPicker } from "./_components/ImportSkillPicker";
+import { SkillDetail } from "./_components/SkillDetail";
+import { ImportSkillPicker } from "../_components/ImportSkillPicker";
 import { useSkill } from "../../../lib/hooks/skills";
 import type { SkillImportPreview } from "../../../lib/hooks/skills";
 import { ApiError } from "../../../lib/api";
@@ -66,14 +68,18 @@ export default function SkillEditorPage() {
     );
   }
 
+  if (!isNew && skill) {
+    return (
+      <AppShell crumb={crumb}>
+        <SkillDetail skill={skill} />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell crumb={crumb}>
       <div style={{ padding: 28 }}>
-        <SkillEditor
-          key={id}
-          skill={isNew ? undefined : skill}
-          importPreview={isNew ? (importPreview ?? undefined) : undefined}
-        />
+        <SkillEditor key={id} importPreview={importPreview ?? undefined} />
       </div>
     </AppShell>
   );

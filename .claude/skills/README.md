@@ -18,7 +18,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [typescript-expert](typescript-expert/SKILL.md) | Full-stack | Type-level programming, performance, tooling, migrations |
 | [security](security/SKILL.md) | Full-stack | OWASP Top 10:2025, auth, injection, uploads, secrets |
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
-| [pr-self-review](pr-self-review/SKILL.md) | Meta | Routes the local diff to matching domain skills + CLAUDE.md hard rules, blocks on critical findings before a PR is opened |
+| [pr-self-review](pr-self-review/SKILL.md) | Meta | Routes the local diff to matching domain skills + AGENTS.md hard rules, blocks on critical findings before a PR is opened |
 
 ## What Are Skills?
 

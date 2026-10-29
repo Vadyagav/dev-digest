@@ -9,7 +9,7 @@ what it says. See [SKILL.md](SKILL.md) for the rules themselves and
 - **1.0.0 — 2026-09-28 — initial.** Extracted from `react-best-practices`'
   9-line `Code Organization` section (whose `utils/`/`components/ui/` advice
   didn't match this repo's actual layout) into a dedicated skill, grounded in
-  32 external sources plus this repo's own `client/CLAUDE.md`,
+  32 external sources plus this repo's own `client/AGENTS.md`,
   `client/docs/ui-architecture.md`, and `client/INSIGHTS.md`.
 
 ## Motivation
@@ -30,12 +30,12 @@ behavioural rules and cross-link here instead of duplicating.
 | SKILL.md section | Backed by |
 |---|---|
 | §1 Placement decision tree | Colocation (Dodds); Next.js private-folder convention; Screaming Architecture (Kettmann) |
-| §2 Folder anatomy | Repo-internal only (`client/CLAUDE.md`, `client/INSIGHTS.md`) — no single external source states this shape |
+| §2 Folder anatomy | Repo-internal only (`client/AGENTS.md`, `client/INSIGHTS.md`) — no single external source states this shape |
 | §3 When to split | When to break up a component (Dodds); Thinking in React; The Uphill Battle of Memoization, Why React Re-Renders (TkDodo, Comeau); React Compiler docs |
 | §4 Business logic layers | You Might Not Need an Effect, Keeping Components Pure, Reusing Logic with Custom Hooks (react.dev); Practical React Query, Creating Query Abstractions (TkDodo) |
 | §5 Constants | FSD `config` segment; bulletproof-react `src/config` (by implication — thinly served by dedicated sources); Why I Don't Like TypeScript Enums (Pocock) |
 | §6 Helpers and utils | AHA Programming (Dodds); bulletproof-react project-structure |
-| §7 Types | Repo-internal (`client/CLAUDE.md`, `client/INSIGHTS.md`'s `@devdigest/shared` vs `@/vendor/shared` entry) |
+| §7 Types | Repo-internal (`client/AGENTS.md`, `client/INSIGHTS.md`'s `@devdigest/shared` vs `@/vendor/shared` entry) |
 | §8 State placement | Choosing the State Structure, Sharing State Between Components, Managing State (react.dev); State Colocation, Application State Management, Prop Drilling (Dodds); React Query as a State Manager (TkDodo) |
 | §9 Styles | Repo-internal only — no framework opinion applies; explicitly notes Tailwind guidance doesn't transfer |
 | §10 Barrels and imports | Please stop using barrel files (TkDodo); FSD Public API / Slices and Segments; Robin Wieruch's folder-structure post (pro-barrel counterpoint) |
@@ -141,7 +141,7 @@ answer genuinely varies by team:
 Rules with no external citation, or where the repo's own convention was the
 deciding factor over general advice:
 
-- [`client/CLAUDE.md`](../../../client/CLAUDE.md) — naming conventions
+- [`client/AGENTS.md`](../../../client/AGENTS.md) — naming conventions
   (PascalCase route-local vs. kebab-case shared), the `src/lib/api.ts` →
   `src/lib/hooks/*` rule, "do not touch" `vendor/*`.
 - [`client/docs/ui-architecture.md`](../../../client/docs/ui-architecture.md)

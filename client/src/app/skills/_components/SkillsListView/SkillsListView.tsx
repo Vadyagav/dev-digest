@@ -1,31 +1,34 @@
 /* /skills — Skills list. One card per skill, click to open a read-only side
-   preview; the "Add" dropdown links out to the (parallel-task) editor/import
-   routes rather than building them here. Mirrors AgentsListView's structure. */
+   preview; the "Add" dropdown offers Create (form modal) or Import (file →
+   preview → confirm, also in a modal). Mirrors AgentsListView's structure. */
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Skeleton, Icon } from "@devdigest/ui";
 import { AppShell } from "../../../../components/app-shell";
 import { useSkills, useUpdateSkill } from "../../../../lib/hooks/skills";
 import { SkillCard } from "../SkillCard";
 import { SkillPreviewDrawer } from "./_components/SkillPreviewDrawer";
+import { SkillFormModal } from "./_components/SkillFormModal";
+import { ImportSkillModal } from "./_components/ImportSkillModal";
 import { filterSkills } from "../../helpers";
 import { s } from "./styles";
 
 export function SkillsListView() {
   const t = useTranslations("skills");
-  const router = useRouter();
   const { data: skills, isLoading, isError, refetch } = useSkills();
   const update = useUpdateSkill();
   const [search, setSearch] = React.useState("");
   const [selectedSkillId, setSelectedSkillId] = React.useState<string | null>(null);
+  const [adding, setAdding] = React.useState<"create" | "import" | null>(null);
 
   const list = filterSkills(skills ?? [], search);
 
   return (
     <AppShell crumb={[{ label: t("page.crumbLab") }, { label: t("page.crumbSkills") }]}>
+      {adding === "create" && <SkillFormModal onClose={() => setAdding(null)} onCreated={setSelectedSkillId} />}
+      {adding === "import" && <ImportSkillModal onClose={() => setAdding(null)} onCreated={setSelectedSkillId} />}
       {selectedSkillId && (
         <SkillPreviewDrawer skillId={selectedSkillId} onClose={() => setSelectedSkillId(null)} />
       )}
@@ -53,9 +56,9 @@ export function SkillsListView() {
               </Button>
             }
             items={[
-              { label: t("page.createNew"), icon: "Edit", onClick: () => router.push("/skills/new") },
+              { label: t("page.createNew"), icon: "Edit", onClick: () => setAdding("create") },
               { divider: true },
-              { label: t("page.importSkill"), icon: "Upload", onClick: () => router.push("/skills/new?import=1") },
+              { label: t("page.importSkill"), icon: "Upload", onClick: () => setAdding("import") },
             ]}
           />
         </div>
@@ -74,7 +77,7 @@ export function SkillsListView() {
             title={t("page.empty.title")}
             body={t("page.empty.body")}
             cta={t("page.empty.cta")}
-            onCta={() => router.push("/skills/new?import=1")}
+            onCta={() => setAdding("import")}
           />
         )}
         {list.length > 0 && (

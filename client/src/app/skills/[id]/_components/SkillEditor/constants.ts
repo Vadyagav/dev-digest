@@ -1,4 +1,2 @@
-import type { SkillType } from "@devdigest/shared";
-
-/** Selectable skill types in the Skill Editor (labels are i18n'd in the component). */
-export const TYPE_VALUES: readonly SkillType[] = ["rubric", "convention", "security", "custom"];
+/** Selectable skill types — shared with the create modal, defined at route level. */
+export { SKILL_TYPE_VALUES as TYPE_VALUES } from "../../../constants";

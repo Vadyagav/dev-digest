@@ -32,6 +32,11 @@
     "notFound": {
       "title": "Skill not found",
       "body": "It may have been deleted."
+    },
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versioning": "Versioning"
     }
   },
   "drawer": {
@@ -89,7 +94,8 @@
       "extracted": "Extracted",
       "community": "Community",
       "imported_url": "Imported"
-    }
+    },
+    "agentCount": "{count, plural, one {# agent} other {# agents}}"
   },
   "preview": {
     "untrustedBadge": "untrusted source",
@@ -134,5 +140,36 @@
     "pick": "Choose file…",
     "importing": "Reading file…",
     "importFailed": "Import failed"
+  },
+  "delete": {
+    "button": "Delete skill",
+    "title": "Delete skill?",
+    "body": "\"{name}\" and its version history will be permanently deleted{count, plural, =0 {} one { and unlinked from # agent} other { and unlinked from # agents}}. This cannot be undone.",
+    "confirm": "Delete"
+  },
+  "form": {
+    "createTitle": "Create skill",
+    "createSubtitle": "A reusable rule agents can attach — name, type, a directive description and a Markdown body.",
+    "importTitle": "Review imported skill",
+    "importSubtitle": "This is the skill's core as parsed from your file. Edit anything, then Create to save it.",
+    "cancel": "Cancel",
+    "emptyBody": "Nothing to preview yet.",
+    "bodyTabs": {
+      "edit": "Markdown",
+      "preview": "Preview"
+    }
+  },
+  "versions": {
+    "title": "Versions",
+    "hint": "Every body change is an immutable version. Diff a previous version against the current one, or Restore it — restoring saves it as a new version.",
+    "loadError": "Could not load versions.",
+    "current": "current",
+    "diff": "Diff",
+    "hideDiff": "Hide diff",
+    "diffLabel": "Diff of v{version} against current",
+    "diffLegend": "− v{version}   + v{current} (current)",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "restoredToast": "Restored v{from} as v{version}"
   }
 }

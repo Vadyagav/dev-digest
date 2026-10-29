@@ -61,6 +61,16 @@ observability/cost — `contracts/observability.ts:46,82,108-109` and
 `total_cost_usd` / `avg_cost_usd` fields with no route building them yet —
 groundwork for a not-yet-built aggregate-cost-dashboard feature.
 
+### 2026-10-29 — conventions scan: rejected rows are kept, not deleted
+`conventions.status` is `pending | accepted | rejected`. A re-scan
+(`POST /repos/:id/conventions/extract`) deletes only `pending` rows and
+de-duplicates new candidates against accepted + rejected rule text, so a
+rejected rule never resurfaces. Don't "clean up" rejected rows — they are the
+memory of the rejection. Candidates whose `evidence.file` wasn't in the
+sampled set are dropped (grounding); the snippet is read from the cited line
+server-side, not taken from the model.
+
+
 ## Tool & Library Notes
 
 ### 2026-09-20 — `tsconfig.json`'s `include` excludes `server/test/` entirely
@@ -177,6 +187,16 @@ never was one before this) — added
 `agents.linkedSkills` (no real `Container`/`Db` needed) and calls the private
 `resolveAgentSkills` via a cast, asserting enabled-only/ordered/`untrusted`
 derivation.
+
+### 2026-10-29 — L02 HW2 gaps closed
+Added the `conventions` module (sampling = configs + top-12 from
+`repoIntel.getConventionSamples()`, no LLM; one structured call on the
+`conventions` feature model), `agent_count` on skills and `skill_count` on
+agents (grouped counts over `agent_skills`), and the Test Quality / API
+Contract seed agents + skills (`src/db/seed-skills.ts`). Migration
+`0012_*` adds `category`, `evidence_line`, `status`, `created_at` to
+`conventions` — run `pnpm db:migrate` then `pnpm db:seed`.
+
 
 ## Open Questions
 

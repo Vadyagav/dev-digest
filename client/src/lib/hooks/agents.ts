@@ -113,6 +113,9 @@ export function useSetAgentSkills() {
     onSuccess: (_d, { agentId }) => {
       qc.invalidateQueries({ queryKey: ["agent-skills", agentId] });
       qc.invalidateQueries({ queryKey: ["agent", agentId] });
+      // Link counts shown on the Skills/Agents cards.
+      qc.invalidateQueries({ queryKey: ["skills"] });
+      qc.invalidateQueries({ queryKey: ["agents"] });
     },
   });
 }

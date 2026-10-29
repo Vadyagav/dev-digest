@@ -1,16 +1,189 @@
 {
-  "diffHash": "c6a734587a7f6d8da5ae854b66253f678699b95239bcfe75397dec6abcd12f35",
+  "diffHash": "c59237eef1982b34ae4b7a5acffd5e0e46931c69004577f16debc6522addd2f3",
   "verdict": "PASS",
-  "timestamp": "2026-09-28T00:00:00Z",
+  "timestamp": "2026-10-29T00:00:00Z",
   "findings": [
+    {
+      "severity": "high",
+      "file": "reviewer-core/pnpm-lock.yaml",
+      "line": 1,
+      "skill": "enforced.md \u00a72",
+      "rule": "lockfile without manifest change",
+      "summary": "pnpm-lock.yaml + pnpm-workspace.yaml (placeholder 'set this to true or false') added to npm-managed reviewer-core/ and e2e/ with no package.json change; AGENTS.md says these use package-lock.json."
+    },
+    {
+      "severity": "high",
+      "file": "server/src/modules/conventions/service.ts",
+      "line": 131,
+      "skill": "security / fastify-best-practices",
+      "rule": "A06 trust-boundary downgrade",
+      "summary": "createSkill upserts by user-supplied name: naming it like an existing manual skill overwrites that skill's body with LLM output from repo content while keeping source='manual' \u2192 injected without the untrusted wrapper.",
+      "outcome": "fixed"
+    },
+    {
+      "severity": "high",
+      "file": "server/src/modules/conventions/routes.ts",
+      "line": 20,
+      "skill": "fastify-best-practices / drizzle-orm-patterns",
+      "rule": "reject inputs the handler can't serve",
+      "summary": "PATCH /conventions/:id with {} passes validation, then .set({}) throws \u2192 500 instead of 422.",
+      "outcome": "fixed"
+    },
+    {
+      "severity": "high",
+      "file": "client/src/app/agents/_components/AgentCard/AgentCard.tsx",
+      "line": 34,
+      "skill": "react-best-practices",
+      "rule": "modal correctness",
+      "summary": "ConfirmDialog rendered inside a card with opacity 0.6 when disabled \u2192 semi-transparent modal; same in SkillCard.tsx:31.",
+      "outcome": "fixed"
+    },
+    {
+      "severity": "high",
+      "file": "client/src/app/repos/[repoId]/conventions/_components/CreateConventionsSkillModal/CreateConventionsSkillModal.tsx",
+      "line": 28,
+      "skill": "react-best-practices",
+      "rule": "handle loading/error/empty",
+      "summary": "Draft or agents query error \u2192 infinite skeleton; empty agents list \u2192 Create disabled with no explanation.",
+      "outcome": "fixed"
+    },
+    {
+      "severity": "high",
+      "file": "client/src/lib/hooks/conventions.ts",
+      "line": 50,
+      "skill": "frontend-ui-architecture / zod",
+      "rule": "shared contract is the single source",
+      "summary": "ConventionsSkillDraft schema defined locally in the client hook instead of vendored shared contracts."
+    },
+    {
+      "severity": "high",
+      "file": "client/src/app/repos/[repoId]/conventions/constants.ts",
+      "line": 4,
+      "skill": "frontend-ui-architecture",
+      "rule": "constants crossing the boundary",
+      "summary": "CATEGORY_VALUES duplicates ConventionCategory enum; use ConventionCategory.options (same for SKILL_TYPE_VALUES, client/src/app/skills/constants.ts:17, medium)."
+    },
+    {
+      "severity": "high",
+      "file": "client/src/app/skills/_components/SkillsListView/_components/SkillFormModal/SkillFormModal.tsx",
+      "line": 59,
+      "skill": "react-best-practices",
+      "rule": "modal a11y",
+      "summary": "No Escape-to-close / focus trap (vendored Modal lacks both \u2014 repo-wide)."
+    },
+    {
+      "severity": "medium",
+      "file": "client/src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.tsx",
+      "line": 31,
+      "skill": "react-best-practices",
+      "rule": "derive from the right source",
+      "summary": "hasScanned derived from visible list; after rejecting all candidates page flips back to 'not scanned' (Run Scan re-enabled)."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/modules/conventions/helpers.ts",
+      "line": 48,
+      "skill": "zod",
+      "rule": "refine-catch",
+      "summary": "Strict LLM schema: one off-enum category / confidence>1 fails the whole scan instead of dropping/normalizing one candidate."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/modules/conventions/routes.ts",
+      "line": 22,
+      "skill": "zod",
+      "rule": "string validations",
+      "summary": "rule/evidence_path accept whitespace-only; use .trim().min(1)."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/modules/conventions/helpers.ts",
+      "line": 83,
+      "skill": "security",
+      "rule": "prompt-injection delimiting",
+      "summary": "Repo files wrapped in unescaped <file> tags rather than reviewer-core wrapUntrusted; mitigated by human Accept + untrusted wrapping of 'extracted' skill."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/modules/conventions/service.ts",
+      "line": 70,
+      "skill": "security / fastify-best-practices",
+      "rule": "unbounded cost / long request",
+      "summary": "Extract runs a paid LLM call synchronously in the request (\u2264180s) with no per-repo in-flight guard."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/db/schema/knowledge.ts",
+      "line": 31,
+      "skill": "postgresql-table-design",
+      "rule": "index access paths",
+      "summary": "conventions has no index on (workspace_id, repo_id, status); agent_skills lacks an index on skill_id for agentCounts()."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/db/schema/knowledge.ts",
+      "line": 43,
+      "skill": "postgresql-table-design / zod",
+      "rule": "redundant column",
+      "summary": "`accepted` duplicates status='accepted' (DB + contract); status/category lack CHECK constraints."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/db/seed.ts",
+      "line": 276,
+      "skill": "drizzle-orm-patterns",
+      "rule": "transaction for dependent writes",
+      "summary": "Seed inserts skill + v1 snapshot non-transactionally."
+    },
+    {
+      "severity": "medium",
+      "file": "server/src/modules/conventions/repository.ts",
+      "line": 28,
+      "skill": "onion-architecture",
+      "rule": "aggregate ownership",
+      "summary": "Reads t.repos (repos module's table) directly; service also uses node:fs directly and resolveFeatureModel (container.db outside a repository)."
+    },
+    {
+      "severity": "medium",
+      "file": "client/src/app/skills/[id]/_components/SkillDetail/SkillDetail.tsx",
+      "line": 16,
+      "skill": "frontend-ui-architecture",
+      "rule": "test expected for logic",
+      "summary": "No colocated tests for SkillDetail and CreateConventionsSkillModal. (CreateConventionsSkillModal now has tests.)"
+    },
+    {
+      "severity": "medium",
+      "file": "client/src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.tsx",
+      "line": 65,
+      "skill": "frontend-ui-architecture",
+      "rule": "global error toast",
+      "summary": "Inline error duplicates global MutationCache toast."
+    },
+    {
+      "severity": "medium",
+      "file": "client/src/app/repos/[repoId]/conventions/_components/ConventionsView/ConventionsView.test.tsx",
+      "line": 60,
+      "skill": "react-testing-library",
+      "rule": "query priority / mock boundaries",
+      "summary": "getAllByText()[0].closest('button'), own-component stubs and getByTestId instead of role queries."
+    },
+    {
+      "severity": "medium",
+      "file": "(diff-wide)",
+      "line": null,
+      "skill": "pr-self-review step 1",
+      "rule": "diff-too-big guard",
+      "summary": "~200 files / ~21k lines vs main (committed L02 + this working tree) \u2014 plausibly 2\u20133 PRs (Skills Lab UI, conventions feature, seed reviewers)."
+    },
     {
       "severity": "high",
       "file": "server/src/modules/pulls/repository.ts",
       "line": 53,
       "skill": "onion-architecture",
-      "rule": "onion-architecture SKILL.md §3 (repository split threshold)",
-      "summary": "PullsRepository spans multiple distinct aggregates in one file (pull_requests/pr_files/pr_commits CRUD plus cross-module rollup reads over reviews/findings/agent_runs) — the same shape reviews/ already split into repository/{pull,review,run}.repo.ts.",
-      "verified": false
+      "rule": "onion-architecture SKILL.md \u00a73 (repository split threshold)",
+      "summary": "PullsRepository spans multiple distinct aggregates in one file (pull_requests/pr_files/pr_commits CRUD plus cross-module rollup reads over reviews/findings/agent_runs) \u2014 the same shape reviews/ already split into repository/{pull,review,run}.repo.ts.",
+      "verified": false,
+      "cached": true
     },
     {
       "severity": "medium",
@@ -18,7 +191,8 @@
       "line": 21,
       "skill": "postgresql-table-design",
       "rule": "Create indexes for access paths you actually query",
-      "summary": "Migration 0011 adds an index on reviews.pr_id but not run_id, even though run.repo.ts's deleteAgentRun filters reviews by eq(reviews.runId, runId) — that delete does a full table scan."
+      "summary": "Migration 0011 adds an index on reviews.pr_id but not run_id, even though run.repo.ts's deleteAgentRun filters reviews by eq(reviews.runId, runId) \u2014 that delete does a full table scan.",
+      "cached": true
     },
     {
       "severity": "medium",
@@ -26,7 +200,8 @@
       "line": 249,
       "skill": "zod",
       "rule": "compose-shared-schemas",
-      "summary": "ConformanceInput.provider hand-rolls z.enum(['openai','anthropic','openrouter']) instead of reusing the shared Provider enum from knowledge.ts, which this file already imports."
+      "summary": "ConformanceInput.provider hand-rolls z.enum(['openai','anthropic','openrouter']) instead of reusing the shared Provider enum from knowledge.ts, which this file already imports.",
+      "cached": true
     },
     {
       "severity": "medium",
@@ -34,7 +209,8 @@
       "line": 36,
       "skill": "zod",
       "rule": "compose-shared-schemas",
-      "summary": "PluginAgent.provider duplicates the same three-value provider enum by hand instead of importing the shared Provider schema; this PR hand-edited three separate copies of this enum to add 'openrouter'."
+      "summary": "PluginAgent.provider duplicates the same three-value provider enum by hand instead of importing the shared Provider schema; this PR hand-edited three separate copies of this enum to add 'openrouter'.",
+      "cached": true
     },
     {
       "severity": "medium",
@@ -42,22 +218,25 @@
       "line": 109,
       "skill": "typescript-expert",
       "rule": "no-shadow / naming clarity",
-      "summary": "Inside composeBody's findings.map callback, const title = sanitizeFindingText(f.title) shadows the outer function parameter title (the report heading)."
+      "summary": "Inside composeBody's findings.map callback, const title = sanitizeFindingText(f.title) shadows the outer function parameter title (the report heading).",
+      "cached": true
     },
     {
       "severity": "medium",
       "file": "client/src/app/repos/[repoId]/pulls/[number]/_components/RunHistory/RunHistory.test.tsx",
       "line": 150,
       "skill": "react-testing-library",
-      "rule": "anti-pattern: fireEvent → userEvent",
-      "summary": "Pre-existing fireEvent.mouseEnter instead of userEvent.hover in the popover test; not touched by this diff, flagged for awareness only."
+      "rule": "anti-pattern: fireEvent \u2192 userEvent",
+      "summary": "Pre-existing fireEvent.mouseEnter instead of userEvent.hover in the popover test; not touched by this diff, flagged for awareness only.",
+      "cached": true
     },
     {
       "severity": "medium",
       "file": "(diff-wide)",
       "skill": "hard-rules",
       "rule": "diff-too-big guard",
-      "summary": "61 files changed across 4 packages (34 modified + 27 untracked, including a routes→service→repository split across 4 server modules plus 3 new skill packages and a planning doc) — plausibly several separate PRs; consider splitting the skill-authoring changes from the server refactor and schema/migration work."
+      "summary": "61 files changed across 4 packages (34 modified + 27 untracked, including a routes\u2192service\u2192repository split across 4 server modules plus 3 new skill packages and a planning doc) \u2014 plausibly several separate PRs; consider splitting the skill-authoring changes from the server refactor and schema/migration work.",
+      "cached": true
     }
   ]
 }
