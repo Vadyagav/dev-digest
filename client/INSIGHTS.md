@@ -68,6 +68,17 @@ has the identical unpatched bug — vendored/do-not-touch, left alone. No
 extract to `lib/`) `computeFlip`/`findClipBoundary` rather than expecting a
 library to already handle it.
 
+### 2026-10-29 — shared confirm modal + skill create/import modals
+Destructive card actions (Delete skill / Delete agent) go through
+`components/confirm-dialog` (Modal with Cancel / Delete / X) — don't use
+`window.confirm`. The Skills list "Add" menu opens `SkillFormModal` (create)
+or `ImportSkillModal` (file → parsed preview → same form, opened on the
+rendered Preview tab); `/skills/new` still exists as a full-page fallback.
+In the agent Skills tab only enabled rows are sortable (`useSortable({
+disabled: !checked })`) — disabled rows are neither drag sources nor drop
+targets.
+
+
 ## Tool & Library Notes
 
 ### 2026-09-20 — `pnpm add` can leave `pnpm-workspace.yaml` with an invalid placeholder
@@ -92,6 +103,28 @@ it spreads it'll make `@devdigest/shared` look optional when it's actually
 the intended package-style alias.
 
 ## Recurring Errors & Fixes
+
+### 2026-09-28 — a value import of `@devdigest/shared` needs `next.config.mjs`'s new `extensionAlias`
+Every existing client hook only ever `import type`-ed contracts from
+`@devdigest/shared` — type-only imports are erased before bundling, so
+Next's bundler (webpack for plain `next dev`, and Turbopack too) never
+actually had to resolve `src/vendor/shared/index.ts`'s real module graph.
+That graph re-exports with explicit `.js` specifiers pointing at `.ts` files
+(`export * from './contracts/findings.js'` etc., mirroring the server's
+NodeNext-style ESM sources) — `tsc`/`tsx` resolve `.js`→`.ts` natively, but
+neither of Next's bundlers do by default, so the very first *runtime* value
+import (added in `src/lib/hooks/core.ts`/`reviews.ts` for response-schema
+validation — `import { PrMeta, PrDetail } from "@devdigest/shared"`) broke
+`next dev` with `Module not found: Can't resolve './contracts/findings.js'`
+(webpack) / `The export ReviewRecord was not found ... module has no exports
+at all` (Turbopack, after silently swallowing the same resolution failure
+one level down). Fixed by adding `experimental.extensionAlias: {".js": [".ts",
+".tsx", ".js"]}` to `client/next.config.mjs` — the officially-supported
+webpack option for exactly this TS-ESM-with-`.js`-specifiers pattern; verified
+against both `next dev` (webpack) and `next dev --turbo`. If a future change
+adds another *value* (non-type) import from `@devdigest/shared` and the app
+502s/500s only in the browser (typecheck/lint/vitest all stay green, since
+none of those go through Next's bundler), check this first.
 
 ### 2026-09-20 — a stale `eslint-disable` comment is itself a lint error once ESLint exists
 Adding ESLint for the first time surfaced `// eslint-disable-next-line

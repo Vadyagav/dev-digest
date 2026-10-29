@@ -4,23 +4,60 @@
     "crumbConventions": "Conventions",
     "headingPrefix": "Conventions in ",
     "repoFallback": "repo",
-    "subtitle": "Scan the cloned repo to surface house-rules — each backed by evidence you can turn into a Skill.",
+    "subtitle": "Scan the cloned repo to surface house-rules — each backed by evidence you can turn into a Skill. Samples tool configs + the top-12 ranked files; the model only classifies.",
     "scanning": "Scanning…",
-    "rescan": "Re-scan",
-    "runExtraction": "Run extraction",
+    "runScan": "Run Scan",
+    "rescan": "ReScan",
     "extractionFailed": "Extraction failed",
     "loadError": "Could not load conventions.",
     "empty": {
       "title": "No conventions extracted yet",
-      "body": "Scan the repo to surface house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill.",
-      "cta": "Run extraction"
+      "body": "Scan the repo to surface house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill."
     },
-    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files"
+    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files",
+    "createSkill": "Create skill ({count})"
+  },
+  "category": {
+    "naming": "naming",
+    "structure": "structure",
+    "error-handling": "error handling",
+    "testing": "testing",
+    "typing": "typing",
+    "imports": "imports",
+    "style": "style",
+    "other": "other"
   },
   "card": {
     "confidence": "Confidence",
     "accepted": "Accepted",
-    "accepting": "Accepting…",
-    "acceptAsSkill": "Accept as Skill"
+    "accept": "Accept",
+    "unaccept": "Undo accept",
+    "reject": "Reject",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "ruleLabel": "Rule"
+  },
+  "create": {
+    "title": "Create skill from conventions",
+    "subtitle": "Compiles the accepted conventions into one skill and links it to an agent.",
+    "explain": "This skill is generated from the {count, plural, one {# accepted convention} other {# accepted conventions}} of this repo. Edit the name, description and body freely before creating — re-running updates the same skill as a new version.",
+    "name": "Name",
+    "description": "Description",
+    "agent": "Link to agent",
+    "agentHint": "The skill is appended to this agent's Skills (enabled).",
+    "body": "Skill body (Markdown)",
+    "bodyHint": "Generated from the accepted rules — edit before saving.",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating…",
+    "createdToast": "Skill \"{name}\" saved (v{version})",
+    "failed": "Could not create the skill",
+    "viewSkills": "Open Skills →",
+    "loadError": "Could not load the skill draft or the agent list.",
+    "noAgents": {
+      "title": "No agents yet",
+      "body": "The skill has to be linked to an agent — create one on the Agents page first."
+    }
   }
 }
